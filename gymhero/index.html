@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>GymHero</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GymHero">
+<meta name="theme-color" content="#0E131E">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{
+  --bg:#0E131E; --card:#171E2C; --card2:#212B40; --line:#2A3450;
+  --text:#EEF1F7; --muted:#8C96AA;
+  --gold:#F5B63F; --teal:#3BD6A0; --coral:#FF6B4A;
+  --radius:16px;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; padding:0; background:var(--bg); color:var(--text);
+  font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overscroll-behavior:none;}
+h1,h2,h3,.display{font-family:'SF Pro Rounded', ui-rounded, -apple-system, sans-serif;}
+#app{max-width:520px; margin:0 auto; padding:calc(env(safe-area-inset-top) + 14px) 16px 110px;}
+.screen{display:none;}
+.screen.active{display:block; animation:fadein .25s ease;}
+@keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+header.top{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px;}
+header.top h1{font-size:24px; margin:0; letter-spacing:.3px;}
+header.top .sub{color:var(--muted); font-size:13px;}
+.card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px; margin-bottom:14px;}
+.card h2{font-size:16px; margin:0 0 10px; font-weight:600;}
+.row{display:flex; gap:10px;}
+.grow{flex:1;}
+/* --- Héros --- */
+.stage{position:relative; display:flex; flex-direction:column; align-items:center; padding:8px 0 4px;}
+.ringwrap{position:relative; width:270px; height:270px;}
+.ringwrap svg.ring{position:absolute; inset:0;}
+.avatarbox{position:absolute; inset:18px; display:flex; align-items:center; justify-content:center;}
+.avatarbox svg{width:100%; height:100%;}
+.lvl{position:absolute; top:-4px; left:50%; transform:translateX(-50%);
+  background:var(--gold); color:#3A2A05; font-weight:800; font-size:13px;
+  padding:4px 12px; border-radius:999px; font-family:ui-rounded;}
+.statrow{display:flex; gap:10px; width:100%; margin-top:14px;}
+.stat{flex:1; background:var(--card2); border-radius:12px; padding:10px 6px; text-align:center;}
+.stat .v{font-size:20px; font-weight:800; font-family:ui-rounded;}
+.stat .l{font-size:11px; color:var(--muted); margin-top:2px;}
+.stat.streak .v{color:var(--coral);}
+.stat.total .v{color:var(--teal);}
+.stat.weight .v{color:var(--gold);}
+.nextunlock{margin-top:12px; width:100%; background:var(--card2); border-radius:12px;
+  padding:12px 14px; display:flex; align-items:center; gap:12px;}
+.nextunlock .ico{font-size:26px;}
+.nextunlock .t{font-size:13px; line-height:1.45;}
+.nextunlock .t b{color:var(--gold);}
+.wardrobe{display:flex; flex-wrap:wrap; gap:8px;}
+.witem{background:var(--card2); border:1px solid var(--line); border-radius:999px;
+  padding:6px 12px; font-size:13px; color:var(--muted);}
+.witem.on{border-color:var(--teal); color:var(--teal);}
+/* --- Séances --- */
+.typebtns{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.typebtn{background:var(--card2); border:1px solid var(--line); color:var(--text);
+  border-radius:14px; padding:16px 8px; font-size:15px; font-weight:600; font-family:ui-rounded;
+  display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;}
+.typebtn:active{transform:scale(.96); border-color:var(--teal);}
+.typebtn .e{font-size:24px;}
+.weekdots{display:flex; justify-content:space-between; margin-top:4px;}
+.wd{display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; color:var(--muted);}
+.wd .dot{width:26px; height:26px; border-radius:50%; background:var(--card2);
+  border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:13px;}
+.wd.done .dot{background:var(--teal); border-color:var(--teal); color:#06382A; font-weight:800;}
+.wd.today .dot{border-color:var(--gold);}
+.goalline{margin-top:12px; font-size:13px; color:var(--muted); display:flex; justify-content:space-between; align-items:center;}
+.goalline select{background:var(--card2); color:var(--text); border:1px solid var(--line);
+  border-radius:8px; padding:4px 8px; font-size:13px;}
+.sesslist{list-style:none; margin:0; padding:0;}
+.sesslist li{display:flex; align-items:center; justify-content:space-between;
+  padding:10px 2px; border-bottom:1px solid var(--line); font-size:14px;}
+.sesslist li:last-child{border-bottom:none;}
+.sesslist .d{color:var(--muted); font-size:12px;}
+.del{background:none; border:none; color:var(--muted); font-size:16px; padding:4px 8px; cursor:pointer;}
+/* --- Mesures --- */
+.field{margin-bottom:12px;}
+.field label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px;}
+.field input{width:100%; background:var(--card2); border:1px solid var(--line); color:var(--text);
+  border-radius:12px; padding:12px 14px; font-size:17px; font-family:ui-rounded;}
+.btn{display:block; width:100%; background:var(--gold); color:#3A2A05; border:none;
+  border-radius:14px; padding:14px; font-size:16px; font-weight:800; font-family:ui-rounded; cursor:pointer;}
+.btn:active{transform:scale(.98);}
+.btn.ghost{background:var(--card2); color:var(--text); border:1px solid var(--line); font-weight:600;}
+.meslist{list-style:none; margin:0; padding:0;}
+.meslist li{display:flex; justify-content:space-between; padding:9px 2px;
+  border-bottom:1px solid var(--line); font-size:14px;}
+.meslist li:last-child{border-bottom:none;}
+.hint{font-size:12px; color:var(--muted); line-height:1.5; margin-top:10px;}
+/* --- Badges --- */
+.badgegrid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+.badge{background:var(--card2); border:1px solid var(--line); border-radius:14px;
+  padding:14px 6px; text-align:center;}
+.badge .e{font-size:30px; filter:grayscale(1); opacity:.35;}
+.badge .n{font-size:12px; font-weight:600; margin-top:6px;}
+.badge .c{font-size:10px; color:var(--muted); margin-top:2px;}
+.badge.on{border-color:var(--gold);}
+.badge.on .e{filter:none; opacity:1;}
+.badge.on .n{color:var(--gold);}
+/* --- Tabbar --- */
+nav{position:fixed; bottom:0; left:0; right:0; background:rgba(14,19,30,.92);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--line); display:flex; justify-content:space-around;
+  padding:8px 0 calc(env(safe-area-inset-bottom) + 6px);}
+nav button{background:none; border:none; color:var(--muted); font-size:11px;
+  display:flex; flex-direction:column; align-items:center; gap:3px; padding:4px 14px;
+  font-family:ui-rounded; cursor:pointer;}
+nav button .e{font-size:21px;}
+nav button.active{color:var(--gold);}
+/* --- Toast & modal --- */
+#toast{position:fixed; left:50%; bottom:100px; transform:translateX(-50%) translateY(20px);
+  background:var(--teal); color:#06382A; font-weight:700; font-size:14px;
+  padding:10px 18px; border-radius:999px; opacity:0; pointer-events:none;
+  transition:all .25s ease; z-index:50; font-family:ui-rounded; white-space:nowrap;}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+#installhint{background:var(--card2); border:1px dashed var(--gold); border-radius:14px;
+  padding:12px 14px; font-size:13px; line-height:1.5; margin-bottom:14px; color:var(--muted);}
+#installhint b{color:var(--gold);}
+.empty{color:var(--muted); font-size:13px; text-align:center; padding:14px 0;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="installhint" style="display:none">
+    📲 Pour l'installer : appuie sur <b>Partager</b> dans Safari puis <b>« Sur l'écran d'accueil »</b>. Elle fonctionnera ensuite 100&nbsp;% hors ligne.
+  </div>
+
+  <!-- ================= HÉROS ================= -->
+  <section id="scr-hero" class="screen active">
+    <header class="top"><h1>GymHero</h1><span class="sub" id="herodate"></span></header>
+    <div class="card">
+      <div class="stage">
+        <div class="ringwrap">
+          <svg class="ring" viewBox="0 0 270 270">
+            <circle cx="135" cy="135" r="128" fill="none" stroke="#212B40" stroke-width="7"/>
+            <circle id="lvlring" cx="135" cy="135" r="128" fill="none" stroke="#F5B63F" stroke-width="7"
+              stroke-linecap="round" stroke-dasharray="804" stroke-dashoffset="804"
+              transform="rotate(-90 135 135)"/>
+          </svg>
+          <div class="lvl" id="lvltag">Niv. 1</div>
+          <div class="avatarbox" id="avatarbox"></div>
+        </div>
+        <div class="statrow">
+          <div class="stat streak"><div class="v" id="st-streak">0</div><div class="l">🔥 sem. de suite</div></div>
+          <div class="stat total"><div class="v" id="st-total">0</div><div class="l">séances</div></div>
+          <div class="stat weight"><div class="v" id="st-weight">–</div><div class="l">poids</div></div>
+        </div>
+        <div class="nextunlock" id="nextunlock"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Garde-robe</h2>
+      <div class="wardrobe" id="wardrobe"></div>
+      <p class="hint">Chaque semaine où tu atteins ton objectif de séances, ta série augmente et ton héros s'habille. Si tu lâches, il se déshabille… à toi de le garder classe. 😄</p>
+    </div>
+  </section>
+
+  <!-- ================= SÉANCES ================= -->
+  <section id="scr-train" class="screen">
+    <header class="top"><h1>Séances</h1><span class="sub" id="weeklabel"></span></header>
+    <div class="card">
+      <h2>Cette semaine</h2>
+      <div class="weekdots" id="weekdots"></div>
+      <div class="goalline">
+        <span id="weekprog"></span>
+        <span>Objectif&nbsp;
+          <select id="goalsel">
+            <option value="2">2 j/sem</option>
+            <option value="3" selected>3 j/sem</option>
+            <option value="4">4 j/sem</option>
+            <option value="5">5 j/sem</option>
+            <option value="6">6 j/sem</option>
+          </select>
+        </span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>J'ai fait ma séance 💪</h2>
+      <div class="typebtns" id="typebtns"></div>
+    </div>
+    <div class="card">
+      <h2>Historique</h2>
+      <ul class="sesslist" id="sesslist"></ul>
+    </div>
+  </section>
+
+  <!-- ================= MESURES ================= -->
+  <section id="scr-body" class="screen">
+    <header class="top"><h1>Mesures</h1><span class="sub">ton corps, en vrai</span></header>
+    <div class="card">
+      <h2>Mise à jour</h2>
+      <div class="row">
+        <div class="field grow"><label>Poids (kg)</label><input id="in-w" type="number" inputmode="decimal" step="0.1" placeholder="78.5"></div>
+        <div class="field grow"><label>Taille (cm)</label><input id="in-h" type="number" inputmode="numeric" placeholder="180"></div>
+      </div>
+      <div class="field"><label>Masse grasse (%)</label><input id="in-bf" type="number" inputmode="decimal" step="0.5" placeholder="20"></div>
+      <button class="btn" id="savemes">Enregistrer → mettre l'avatar à jour</button>
+      <p class="hint">Pas de balance impédancemètre ? Estime ton % de gras avec une photo comparative (cherche « body fat percentage chart »). L'important est d'utiliser toujours la même méthode pour voir l'évolution.</p>
+    </div>
+    <div class="card">
+      <h2>Historique</h2>
+      <ul class="meslist" id="meslist"></ul>
+    </div>
+  </section>
+
+  <!-- ================= BADGES ================= -->
+  <section id="scr-badges" class="screen">
+    <header class="top"><h1>Badges</h1><span class="sub" id="badgecount"></span></header>
+    <div class="card"><div class="badgegrid" id="badgegrid"></div></div>
+  </section>
+
+</div>
+
+<nav>
+  <button data-scr="hero" class="active"><span class="e">🦸</span>Héros</button>
+  <button data-scr="train"><span class="e">🏋️</span>Séances</button>
+  <button data-scr="body"><span class="e">📏</span>Mesures</button>
+  <button data-scr="badges"><span class="e">🏅</span>Badges</button>
+</nav>
+
+<div id="toast"></div>
+
+<script>
+/* ============ DONNÉES ============ */
+const KEY='gymhero-v1';
+let D = load();
+function load(){
+  try{ const d=JSON.parse(localStorage.getItem(KEY)); if(d) return d; }catch(e){}
+  return { sessions:[], measures:[], goal:3, profile:null };
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(D)); }
+
+const TYPES=[
+  {id:'push', n:'Push', e:'🫸'},
+  {id:'pull', n:'Pull', e:'🫷'},
+  {id:'legs', n:'Jambes', e:'🦵'},
+  {id:'full', n:'Full body', e:'🧍'},
+  {id:'cardio', n:'Cardio', e:'🏃'},
+  {id:'autre', n:'Autre', e:'✨'},
+];
+
+const UNLOCKS=[
+  {w:1,  id:'tshirt',  n:'T-shirt',   e:'👕'},
+  {w:2,  id:'short',   n:'Short',     e:'🩳'},
+  {w:4,  id:'shoes',   n:'Baskets',   e:'👟'},
+  {w:6,  id:'cap',     n:'Casquette', e:'🧢'},
+  {w:9,  id:'jacket',  n:'Veste',     e:'🧥'},
+  {w:12, id:'belt',    n:'Ceinture de champion', e:'🏆'},
+];
+
+/* ============ DATES / SEMAINES ============ */
+function today(){ const d=new Date(); return d.toISOString().slice(0,10); }
+function mondayOf(dateStr){
+  const d=new Date(dateStr+'T12:00:00');
+  const day=(d.getDay()+6)%7; // lundi=0
+  d.setDate(d.getDate()-day);
+  return d.toISOString().slice(0,10);
+}
+function addDays(dateStr,n){
+  const d=new Date(dateStr+'T12:00:00'); d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function uniqueDaysInWeek(monday){
+  const days=new Set();
+  for(const s of D.sessions){
+    if(mondayOf(s.date)===monday) days.add(s.date);
+  }
+  return days;
+}
+function currentStreak(){
+  const goal=D.goal;
+  let mon=mondayOf(today());
+  let streak=0;
+  // la semaine en cours compte si l'objectif est déjà atteint, sinon elle ne casse pas la série
+  if(uniqueDaysInWeek(mon).size>=goal) streak++;
+  mon=addDays(mon,-7);
+  while(uniqueDaysInWeek(mon).size>=goal){ streak++; mon=addDays(mon,-7); }
+  return streak;
+}
+function bestStreak(){
+  if(D.sessions.length===0) return 0;
+  const mondays=[...new Set(D.sessions.map(s=>mondayOf(s.date)))].sort();
+  let best=0, cur=0, prev=null;
+  for(const m of mondays){
+    const ok=uniqueDaysInWeek(m).size>=D.goal;
+    if(!ok){ prev=m; cur=0; continue; }
+    if(prev!==null && addDays(prev,7)===m) cur++; else cur=1;
+    prev=m; best=Math.max(best,cur);
+  }
+  return Math.max(best,currentStreak());
+}
+
+/* ============ NIVEAU ============ */
+function level(){ return Math.floor(Math.sqrt(D.sessions.length*1.5))+1; }
+function lvlThreshold(L){ return Math.ceil(((L-1)*(L-1))/1.5); }
+function lvlProgress(){
+  const L=level(), a=lvlThreshold(L), b=lvlThreshold(L+1);
+  return b===a?1:(D.sessions.length-a)/(b-a);
+}
+
+/* ============ AVATAR ============ */
+function bodyParams(){
+  const p=D.profile||{w:75,h:175,bf:22};
+  const ffmi=(p.w*(1-p.bf/100))/Math.pow(p.h/100,2);
+  const m=Math.max(0,Math.min(1,(ffmi-15.5)/8));   // masse musculaire 0..1
+  const f=Math.max(0,Math.min(1,(p.bf-8)/27));      // masse grasse 0..1
+  const hs=0.92+Math.max(0,Math.min(1,(p.h-150)/50))*0.16; // taille
+  return {m,f,hs};
+}
+function unlockedItems(){
+  const s=currentStreak();
+  return UNLOCKS.filter(u=>s>=u.w).map(u=>u.id);
+}
+function avatarSVG(){
+  const {m,f,hs}=bodyParams();
+  const items=unlockedItems();
+  const cx=110;
+  const SW=30+m*18;                       // demi-largeur épaules
+  const WW=Math.max(17,22+f*16-m*3);      // demi-largeur taille
+  const HW=24+f*12;                       // demi-largeur hanches
+  const armW=10+m*12;                     // épaisseur bras
+  const legW=14+m*8+f*4;                  // épaisseur jambes
+  const skin='#E8B98A', skin2='#D9A876';
+  const has=id=>items.includes(id);
+  let s='';
+  // ------- corps -------
+  // jambes
+  s+=`<path d="M ${cx-13} 172 L ${cx-15} 240 L ${cx-16} 296" fill="none" stroke="${skin}" stroke-width="${legW}" stroke-linecap="round"/>`;
+  s+=`<path d="M ${cx+13} 172 L ${cx+15} 240 L ${cx+16} 296" fill="none" stroke="${skin}" stroke-width="${legW}" stroke-linecap="round"/>`;
+  // pieds
+  s+=`<ellipse cx="${cx-19}" cy="302" rx="14" ry="7" fill="${has('shoes')?'#F4F5F7':skin2}"/>`;
+  s+=`<ellipse cx="${cx+19}" cy="302" rx="14" ry="7" fill="${has('shoes')?'#F4F5F7':skin2}"/>`;
+  if(has('shoes')){
+    s+=`<path d="M ${cx-31} 303 h 24" stroke="#F5B63F" stroke-width="3" stroke-linecap="round"/>`;
+    s+=`<path d="M ${cx+7} 303 h 24" stroke="#F5B63F" stroke-width="3" stroke-linecap="round"/>`;
+  }
+  // bras
+  const shx=SW-3;
+  s+=`<path d="M ${cx-shx} 88 L ${cx-shx-8} 130 L ${cx-shx-5} 166" fill="none" stroke="${skin}" stroke-width="${armW}" stroke-linecap="round"/>`;
+  s+=`<path d="M ${cx+shx} 88 L ${cx+shx+8} 130 L ${cx+shx+5} 166" fill="none" stroke="${skin}" stroke-width="${armW}" stroke-linecap="round"/>`;
+  // torse
+  s+=`<path d="M ${cx-SW} 82 Q ${cx-SW-4} 92 ${cx-SW+4} 104 C ${cx-WW-4} 128, ${cx-WW} 140, ${cx-WW} 152 L ${cx-HW} 172 L ${cx+HW} 172 L ${cx+WW} 152 C ${cx+WW} 140, ${cx+WW+4} 128, ${cx+SW-4} 104 Q ${cx+SW+4} 92 ${cx+SW} 82 Q ${cx} 70 ${cx-SW} 82 Z" fill="${skin}"/>`;
+  // bidon si masse grasse élevée
+  if(f>0.45){
+    s+=`<ellipse cx="${cx}" cy="148" rx="${WW*0.95}" ry="${(f-0.45)*42+6}" fill="${skin}"/>`;
+    s+=`<ellipse cx="${cx}" cy="148" rx="${WW*0.95}" ry="${(f-0.45)*42+6}" fill="#00000012"/>`;
+  }
+  // pecs + abdos si sec et musclé
+  if(m>0.5 && f<0.5 && !has('tshirt')){
+    s+=`<path d="M ${cx-SW*0.55} 104 Q ${cx} 116 ${cx+SW*0.55} 104" fill="none" stroke="${skin2}" stroke-width="2.5" stroke-linecap="round"/>`;
+    s+=`<line x1="${cx}" y1="118" x2="${cx}" y2="152" stroke="${skin2}" stroke-width="2"/>`;
+    s+=`<path d="M ${cx-10} 128 h 20 M ${cx-9} 140 h 18" stroke="${skin2}" stroke-width="2" stroke-linecap="round"/>`;
+  }
+  // caleçon de base (toujours là, on reste poli 😄)
+  s+=`<path d="M ${cx-HW-2} 164 L ${cx+HW+2} 164 L ${cx+HW} 186 L ${cx+6} 186 L ${cx} 178 L ${cx-6} 186 L ${cx-HW} 186 Z" fill="#33415C"/>`;
+  // ------- vêtements -------
+  if(has('short')){
+    s+=`<path d="M ${cx-HW-3} 162 L ${cx+HW+3} 162 L ${cx+HW+5} 212 L ${cx+7} 212 L ${cx} 182 L ${cx-7} 212 L ${cx-HW-5} 212 Z" fill="#2E3B55"/>`;
+    s+=`<path d="M ${cx-HW-1} 168 L ${cx-HW-3} 208" stroke="#F5B63F" stroke-width="2.5" stroke-linecap="round"/>`;
+    s+=`<path d="M ${cx+HW+1} 168 L ${cx+HW+3} 208" stroke="#F5B63F" stroke-width="2.5" stroke-linecap="round"/>`;
+  }
+  if(has('tshirt')){
+    // manches
+    s+=`<path d="M ${cx-shx} 88 L ${cx-shx-7} 122" fill="none" stroke="#2FA57C" stroke-width="${armW+5}" stroke-linecap="round"/>`;
+    s+=`<path d="M ${cx+shx} 88 L ${cx+shx+7} 122" fill="none" stroke="#2FA57C" stroke-width="${armW+5}" stroke-linecap="round"/>`;
+    // buste
+    s+=`<path d="M ${cx-SW-2} 82 Q ${cx-SW-6} 92 ${cx-SW+3} 104 C ${cx-WW-6} 128, ${cx-WW-2} 140, ${cx-WW-2} 154 L ${cx-HW-2} 176 L ${cx+HW+2} 176 L ${cx+WW+2} 154 C ${cx+WW+2} 140, ${cx+WW+6} 128, ${cx+SW-3} 104 Q ${cx+SW+6} 92 ${cx+SW+2} 82 Q ${cx} 68 ${cx-SW-2} 82 Z" fill="#3BD6A0"/>`;
+    s+=`<path d="M ${cx-9} 80 Q ${cx} 90 ${cx+9} 80" fill="none" stroke="#2FA57C" stroke-width="3"/>`;
+    s+=`<circle cx="${cx}" cy="122" r="9" fill="#2FA57C" opacity="0.5"/>`;
+    s+=`<path d="M ${cx-4} 122 l 3 3 l 6 -7" fill="none" stroke="#EFFFF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  if(has('jacket')){
+    s+=`<path d="M ${cx-shx} 86 L ${cx-shx-9} 130 L ${cx-shx-6} 168" fill="none" stroke="#414E6E" stroke-width="${armW+6}" stroke-linecap="round"/>`;
+    s+=`<path d="M ${cx+shx} 86 L ${cx+shx+9} 130 L ${cx+shx+6} 168" fill="none" stroke="#414E6E" stroke-width="${armW+6}" stroke-linecap="round"/>`;
+    s+=`<path d="M ${cx-SW-3} 82 Q ${cx-SW-7} 94 ${cx-SW+2} 106 C ${cx-WW-8} 130, ${cx-WW-4} 142, ${cx-WW-4} 158 L ${cx-HW-3} 178 L ${cx-13} 178 L ${cx-9} 84 Z" fill="#414E6E"/>`;
+    s+=`<path d="M ${cx+SW+3} 82 Q ${cx+SW+7} 94 ${cx+SW-2} 106 C ${cx+WW+8} 130, ${cx+WW+4} 142, ${cx+WW+4} 158 L ${cx+HW+3} 178 L ${cx+13} 178 L ${cx+9} 84 Z" fill="#414E6E"/>`;
+    s+=`<path d="M ${cx-13} 178 L ${cx-9} 84 M ${cx+13} 178 L ${cx+9} 84" stroke="#5A6A92" stroke-width="2"/>`;
+  }
+  if(has('belt')){
+    s+=`<rect x="${cx-HW-4}" y="160" width="${(HW+4)*2}" height="12" rx="4" fill="#F5B63F"/>`;
+    s+=`<circle cx="${cx}" cy="166" r="8" fill="#FFDD87" stroke="#C88F1E" stroke-width="2"/>`;
+    s+=`<path d="M ${cx} 161 l 1.6 3.4 3.8 .4 -2.8 2.6 .8 3.7 -3.4 -1.9 -3.4 1.9 .8 -3.7 -2.8 -2.6 3.8 -.4 Z" fill="#C88F1E"/>`;
+  }
+  // ------- tête -------
+  s+=`<rect x="${cx-7}" y="60" width="14" height="14" rx="5" fill="${skin}"/>`;
+  s+=`<circle cx="${cx}" cy="44" r="24" fill="${skin}"/>`;
+  // cheveux
+  s+=`<path d="M ${cx-24} 42 Q ${cx-22} 18 ${cx} 18 Q ${cx+22} 18 ${cx+24} 42 Q ${cx+12} 30 ${cx} 30 Q ${cx-12} 30 ${cx-24} 42 Z" fill="#4A3626"/>`;
+  // yeux + sourire (le sourire s'agrandit avec la série)
+  const smile=Math.min(currentStreak(),6);
+  s+=`<circle cx="${cx-9}" cy="44" r="2.6" fill="#2B2B2B"/><circle cx="${cx+9}" cy="44" r="2.6" fill="#2B2B2B"/>`;
+  s+=`<path d="M ${cx-8} ${53} Q ${cx} ${53+3+smile} ${cx+8} ${53}" fill="none" stroke="#8A5B33" stroke-width="2.5" stroke-linecap="round"/>`;
+  if(has('cap')){
+    s+=`<path d="M ${cx-25} 38 Q ${cx-24} 14 ${cx} 14 Q ${cx+24} 14 ${cx+25} 38 Z" fill="#FF6B4A"/>`;
+    s+=`<path d="M ${cx-2} 34 L ${cx+34} 32 Q ${cx+36} 38 ${cx+30} 39 L ${cx-2} 39 Z" fill="#E0532F"/>`;
+    s+=`<circle cx="${cx}" cy="24" r="3.5" fill="#FFD9CE"/>`;
+  }
+  const H=340*hs>340?340:320; // hauteur fixe, on joue sur le scale
+  return `<svg viewBox="0 0 220 330"><g transform="translate(110,325) scale(${(0.94+ (hs-0.92)*1.2).toFixed(3)}) translate(-110,-325)">${s}</g></svg>`;
+}
+
+/* ============ BADGES ============ */
+function badgeDefs(){
+  const total=D.sessions.length, st=bestStreak();
+  const typesDone=new Set(D.sessions.map(s=>s.type));
+  return [
+    {e:'🏁', n:'Premier pas', c:'1 séance', on:total>=1},
+    {e:'🔟', n:'Dix de fer', c:'10 séances', on:total>=10},
+    {e:'⚙️', n:'La machine', c:'25 séances', on:total>=25},
+    {e:'🛡️', n:'Demi-centurie', c:'50 séances', on:total>=50},
+    {e:'🏛️', n:'Centurion', c:'100 séances', on:total>=100},
+    {e:'🔥', n:'Ça chauffe', c:'2 sem. régulières', on:st>=2},
+    {e:'🌕', n:'Un mois de fer', c:'4 sem. régulières', on:st>=4},
+    {e:'💎', n:'Inarrêtable', c:'8 sem. régulières', on:st>=8},
+    {e:'👑', n:'Trimestre royal', c:'12 sem. régulières', on:st>=12},
+    {e:'📐', n:'Suivi sérieux', c:'4 mesures notées', on:D.measures.length>=4},
+    {e:'🎯', n:'Polyvalent', c:'5 types de séance', on:typesDone.size>=5},
+    {e:'🌅', n:'Semaine parfaite', c:'5 séances / semaine', on:hasPerfectWeek()},
+  ];
+}
+function hasPerfectWeek(){
+  const mondays=[...new Set(D.sessions.map(s=>mondayOf(s.date)))];
+  return mondays.some(m=>uniqueDaysInWeek(m).size>=5);
+}
+
+/* ============ RENDU ============ */
+const FR_D=['lun','mar','mer','jeu','ven','sam','dim'];
+function fmtDate(ds){
+  const d=new Date(ds+'T12:00:00');
+  return d.toLocaleDateString('fr-FR',{weekday:'short', day:'numeric', month:'short'});
+}
+function render(){
+  const st=currentStreak(), total=D.sessions.length, L=level();
+  // héros
+  document.getElementById('herodate').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'long', day:'numeric', month:'long'});
+  document.getElementById('avatarbox').innerHTML=avatarSVG();
+  document.getElementById('lvltag').textContent='Niv. '+L;
+  document.getElementById('lvlring').style.strokeDashoffset=String(804-804*Math.min(1,lvlProgress()));
+  document.getElementById('st-streak').textContent=st;
+  document.getElementById('st-total').textContent=total;
+  document.getElementById('st-weight').textContent=D.profile?D.profile.w+' kg':'–';
+  // prochain déblocage
+  const next=UNLOCKS.find(u=>st<u.w);
+  const nu=document.getElementById('nextunlock');
+  if(next){
+    const left=next.w-st;
+    nu.innerHTML=`<span class="ico">${next.e}</span><span class="t">Encore <b>${left} semaine${left>1?'s':''} régulière${left>1?'s':''}</b> pour débloquer&nbsp;: <b>${next.n}</b></span>`;
+  } else {
+    nu.innerHTML=`<span class="ico">🏆</span><span class="t"><b>Garde-robe complète !</b> Ton héros est au sommet — maintenant, maintiens la série.</span>`;
+  }
+  // garde-robe
+  const items=unlockedItems();
+  document.getElementById('wardrobe').innerHTML=UNLOCKS.map(u=>
+    `<span class="witem ${items.includes(u.id)?'on':''}">${u.e} ${u.n} · sem. ${u.w}</span>`).join('');
+  // séances : semaine
+  const mon=mondayOf(today());
+  const days=uniqueDaysInWeek(mon);
+  document.getElementById('weeklabel').textContent='semaine du '+new Date(mon+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+  let wd='';
+  for(let i=0;i<7;i++){
+    const ds=addDays(mon,i);
+    const done=days.has(ds), isToday=ds===today();
+    wd+=`<div class="wd ${done?'done':''} ${isToday?'today':''}"><span class="dot">${done?'✓':''}</span>${FR_D[i]}</div>`;
+  }
+  document.getElementById('weekdots').innerHTML=wd;
+  document.getElementById('weekprog').textContent=`${days.size}/${D.goal} jours — ${days.size>=D.goal?'objectif atteint 🔥':'en cours'}`;
+  document.getElementById('goalsel').value=String(D.goal);
+  // historique séances
+  const sl=document.getElementById('sesslist');
+  const recent=[...D.sessions].sort((a,b)=>b.date.localeCompare(a.date)||b.ts-a.ts).slice(0,30);
+  sl.innerHTML=recent.length?recent.map(s=>{
+    const t=TYPES.find(t=>t.id===s.type)||TYPES[5];
+    return `<li><span>${t.e} ${t.n} <span class="d">· ${fmtDate(s.date)}</span></span><button class="del" data-ts="${s.ts}">✕</button></li>`;
+  }).join(''):'<div class="empty">Aucune séance pour l\'instant. Ton héros t\'attend. 🫡</div>';
+  // mesures
+  const ml=document.getElementById('meslist');
+  const mes=[...D.measures].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
+  ml.innerHTML=mes.length?mes.map(m=>
+    `<li><span>${fmtDate(m.date)}</span><span>${m.w} kg · ${m.bf} %</span></li>`).join(''):'<div class="empty">Enregistre tes premières mesures pour donner sa vraie forme à ton héros.</div>';
+  if(D.profile){
+    document.getElementById('in-w').value=D.profile.w;
+    document.getElementById('in-h').value=D.profile.h;
+    document.getElementById('in-bf').value=D.profile.bf;
+  }
+  // badges
+  const bd=badgeDefs();
+  document.getElementById('badgegrid').innerHTML=bd.map(b=>
+    `<div class="badge ${b.on?'on':''}"><div class="e">${b.e}</div><div class="n">${b.n}</div><div class="c">${b.c}</div></div>`).join('');
+  document.getElementById('badgecount').textContent=bd.filter(b=>b.on).length+' / '+bd.length+' débloqués';
+}
+
+/* ============ ACTIONS ============ */
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200);
+}
+document.getElementById('typebtns').innerHTML=TYPES.map(t=>
+  `<button class="typebtn" data-type="${t.id}"><span class="e">${t.e}</span>${t.n}</button>`).join('');
+document.getElementById('typebtns').addEventListener('click',e=>{
+  const b=e.target.closest('.typebtn'); if(!b) return;
+  const before=currentStreak();
+  D.sessions.push({date:today(), type:b.dataset.type, ts:Date.now()});
+  save();
+  const after=currentStreak();
+  render();
+  if(after>before){
+    const nw=UNLOCKS.find(u=>u.w===after);
+    toast(nw?`${nw.e} ${nw.n} débloqué !`:'🔥 Semaine validée ! Série : '+after);
+  } else {
+    toast('Séance enregistrée 💪');
+  }
+});
+document.getElementById('sesslist').addEventListener('click',e=>{
+  const b=e.target.closest('.del'); if(!b) return;
+  D.sessions=D.sessions.filter(s=>String(s.ts)!==b.dataset.ts);
+  save(); render(); toast('Séance supprimée');
+});
+document.getElementById('goalsel').addEventListener('change',e=>{
+  D.goal=parseInt(e.target.value,10); save(); render();
+});
+document.getElementById('savemes').addEventListener('click',()=>{
+  const w=parseFloat(document.getElementById('in-w').value);
+  const h=parseFloat(document.getElementById('in-h').value);
+  const bf=parseFloat(document.getElementById('in-bf').value);
+  if(!w||!h||!bf){ toast('Remplis les trois champs 🙂'); return; }
+  D.profile={w,h,bf};
+  D.measures=D.measures.filter(m=>m.date!==today());
+  D.measures.push({date:today(), w, bf});
+  save(); render(); toast('Avatar mis à jour ✨');
+});
+
+/* ============ NAVIGATION ============ */
+document.querySelectorAll('nav button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('scr-'+b.dataset.scr).classList.add('active');
+    window.scrollTo(0,0);
+  });
+});
+
+/* ============ PWA ============ */
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+if(!window.matchMedia('(display-mode: standalone)').matches && !navigator.standalone){
+  document.getElementById('installhint').style.display='block';
+}
+
+render();
+</script>
+</body>
+</html>

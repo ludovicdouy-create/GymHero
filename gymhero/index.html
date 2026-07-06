@@ -111,7 +111,7 @@ nav{position:fixed; bottom:0; left:0; right:0; background:rgba(14,19,30,.92);
   border-top:1px solid var(--line); display:flex; justify-content:space-around;
   padding:8px 0 calc(env(safe-area-inset-bottom) + 6px);}
 nav button{background:none; border:none; color:var(--muted); font-size:11px;
-  display:flex; flex-direction:column; align-items:center; gap:3px; padding:4px 14px;
+  display:flex; flex-direction:column; align-items:center; gap:3px; padding:4px 8px;
   font-family:ui-rounded; cursor:pointer;}
 nav button .e{font-size:21px;}
 nav button.active{color:var(--gold);}
@@ -125,6 +125,46 @@ nav button.active{color:var(--gold);}
   padding:12px 14px; font-size:13px; line-height:1.5; margin-bottom:14px; color:var(--muted);}
 #installhint b{color:var(--gold);}
 .empty{color:var(--muted); font-size:13px; text-align:center; padding:14px 0;}
+/* --- Exos --- */
+.exolist{list-style:none; margin:0; padding:0;}
+.exolist li{display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:12px 2px; border-bottom:1px solid var(--line); cursor:pointer;}
+.exolist li:last-child{border-bottom:none;}
+.exolist .nm{font-size:15px; font-weight:600; font-family:ui-rounded;}
+.exolist .last{font-size:12px; color:var(--teal); margin-top:2px;}
+.exolist .last.none{color:var(--muted);}
+.exolist .chev{color:var(--muted); font-size:20px;}
+.addline{display:flex; gap:8px; margin-top:12px;}
+.addline input{flex:1; min-width:0; background:var(--card2); border:1px solid var(--line);
+  color:var(--text); border-radius:12px; padding:12px 14px; font-size:15px;}
+.addline .btn{width:auto; padding:12px 18px;}
+.sugg{display:flex; flex-wrap:wrap; gap:8px;}
+.sugg button{background:var(--card2); border:1px solid var(--line); color:var(--text);
+  border-radius:999px; padding:7px 12px; font-size:13px; cursor:pointer;}
+.sugg button:active{border-color:var(--teal); transform:scale(.97);}
+.backbtn{background:none; border:none; color:var(--gold); font-size:15px;
+  font-family:ui-rounded; font-weight:700; padding:0; cursor:pointer;}
+.setrow{display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+.setrow .num{width:24px; text-align:center; color:var(--muted); font-size:13px; font-family:ui-rounded;}
+.setrow input{flex:1; min-width:0; background:var(--card2); border:1px solid var(--line);
+  color:var(--text); border-radius:10px; padding:11px 8px; font-size:16px;
+  font-family:ui-rounded; text-align:center;}
+.setrow .x{background:none; border:none; color:var(--muted); font-size:15px; padding:2px 6px; cursor:pointer;}
+.lastref{background:var(--card2); border-radius:12px; padding:10px 12px;
+  font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:12px;}
+.lastref b{color:var(--teal);}
+.chartbox svg{width:100%; height:auto; display:block;}
+.loghist{list-style:none; margin:0; padding:0;}
+.loghist li{padding:10px 2px; border-bottom:1px solid var(--line); font-size:13px;}
+.loghist li:last-child{border-bottom:none;}
+.lh-top{display:flex; justify-content:space-between; align-items:center;}
+.lh-top b{font-family:ui-rounded;}
+.lh-d{color:var(--muted); font-size:12px;}
+.lh-sets{margin-top:3px; color:var(--teal);}
+.lh-note{margin-top:3px; color:var(--muted); font-style:italic;}
+textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line);
+  color:var(--text); border-radius:12px; padding:10px 12px; font-size:14px;
+  font-family:inherit; resize:none;}
 </style>
 </head>
 <body>
@@ -212,6 +252,45 @@ nav button.active{color:var(--gold);}
     </div>
   </section>
 
+  <!-- ================= EXOS ================= -->
+  <section id="scr-exos" class="screen">
+    <div id="exo-list-view">
+      <header class="top"><h1>Exercices</h1><span class="sub">tes charges, machine par machine</span></header>
+      <div class="card">
+        <h2>Mes exercices</h2>
+        <ul class="exolist" id="exolist"></ul>
+        <div class="addline">
+          <input id="in-exoname" placeholder="Ajouter un exercice…">
+          <button class="btn" id="addexo">＋</button>
+        </div>
+      </div>
+      <div class="card" id="suggcard">
+        <h2>Suggestions</h2>
+        <div class="sugg" id="suggbtns"></div>
+      </div>
+    </div>
+    <div id="exo-detail-view" style="display:none;">
+      <header class="top"><button class="backbtn" id="exoback">‹ Exercices</button></header>
+      <div class="card">
+        <h2 id="exo-title"></h2>
+        <div class="lastref" id="exo-lastref"></div>
+        <div id="setrows"></div>
+        <button class="btn ghost" id="addset" style="margin-bottom:12px;">＋ Ajouter une série</button>
+        <div class="field"><label>Note (optionnel)</label><textarea class="notein" id="in-note" rows="2" placeholder="Sensations, réglage du siège, tempo…"></textarea></div>
+        <button class="btn" id="savelog">Enregistrer la perf 💪</button>
+      </div>
+      <div class="card">
+        <h2>Progression</h2>
+        <div class="chartbox" id="exochart"></div>
+      </div>
+      <div class="card">
+        <h2>Historique</h2>
+        <ul class="loghist" id="loghist"></ul>
+        <button class="btn ghost" id="delexo" style="margin-top:12px; color:var(--coral);">Supprimer cet exercice</button>
+      </div>
+    </div>
+  </section>
+
   <!-- ================= BADGES ================= -->
   <section id="scr-badges" class="screen">
     <header class="top"><h1>Badges</h1><span class="sub" id="badgecount"></span></header>
@@ -223,6 +302,7 @@ nav button.active{color:var(--gold);}
 <nav>
   <button data-scr="hero" class="active"><span class="e">🦸</span>Héros</button>
   <button data-scr="train"><span class="e">🏋️</span>Séances</button>
+  <button data-scr="exos"><span class="e">📈</span>Exos</button>
   <button data-scr="body"><span class="e">📏</span>Mesures</button>
   <button data-scr="badges"><span class="e">🏅</span>Badges</button>
 </nav>
@@ -234,8 +314,11 @@ nav button.active{color:var(--gold);}
 const KEY='gymhero-v1';
 let D = load();
 function load(){
-  try{ const d=JSON.parse(localStorage.getItem(KEY)); if(d) return d; }catch(e){}
-  return { sessions:[], measures:[], goal:3, profile:null };
+  try{
+    const d=JSON.parse(localStorage.getItem(KEY));
+    if(d){ d.exercises=d.exercises||[]; d.logs=d.logs||[]; return d; }
+  }catch(e){}
+  return { sessions:[], measures:[], goal:3, profile:null, exercises:[], logs:[] };
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(D)); }
 
@@ -424,6 +507,8 @@ function badgeDefs(){
     {e:'👑', n:'Trimestre royal', c:'12 sem. régulières', on:st>=12},
     {e:'📐', n:'Suivi sérieux', c:'4 mesures notées', on:D.measures.length>=4},
     {e:'🎯', n:'Polyvalent', c:'5 types de séance', on:typesDone.size>=5},
+    {e:'📓', n:'Carnet de charges', c:'10 perfs notées', on:D.logs.length>=10},
+    {e:'🐘', n:'Costaud', c:'100 kg sur un exo', on:D.logs.some(l=>l.sets.some(s=>s.w>=100))},
     {e:'🌅', n:'Semaine parfaite', c:'5 séances / semaine', on:hasPerfectWeek()},
   ];
 }
@@ -496,6 +581,8 @@ function render(){
   document.getElementById('badgegrid').innerHTML=bd.map(b=>
     `<div class="badge ${b.on?'on':''}"><div class="e">${b.e}</div><div class="n">${b.n}</div><div class="c">${b.c}</div></div>`).join('');
   document.getElementById('badgecount').textContent=bd.filter(b=>b.on).length+' / '+bd.length+' débloqués';
+  // exercices
+  renderExoList();
 }
 
 /* ============ ACTIONS ============ */
@@ -537,6 +624,151 @@ document.getElementById('savemes').addEventListener('click',()=>{
   D.measures=D.measures.filter(m=>m.date!==today());
   D.measures.push({date:today(), w, bf});
   save(); render(); toast('Avatar mis à jour ✨');
+});
+
+/* ============ EXERCICES ============ */
+const SUGG=['Développé couché','Squat','Soulevé de terre','Presse à cuisses','Tirage vertical','Rowing machine','Développé épaules','Curl biceps','Extension triceps','Leg curl'];
+let curExo=null, curSets=[];
+
+function exoLogs(id){ return D.logs.filter(l=>l.exId===id).sort((a,b)=>a.date.localeCompare(b.date)||a.ts-b.ts); }
+function lastLog(id){ const ls=exoLogs(id); return ls.length?ls[ls.length-1]:null; }
+function bestW(log){ return log.sets.reduce((a,s)=>Math.max(a,s.w),0); }
+function fmtSets(sets){ return sets.map(s=>`${s.w}\u00A0kg\u00A0×\u00A0${s.r}`).join(' · '); }
+
+function renderExoList(){
+  const ul=document.getElementById('exolist');
+  ul.innerHTML=D.exercises.length?D.exercises.map(x=>{
+    const ll=lastLog(x.id);
+    const sub=ll?`Dernier : ${fmtSets(ll.sets)}`:'Jamais fait — à toi de jouer';
+    return `<li data-id="${x.id}"><div><div class="nm">${x.name}</div><div class="last ${ll?'':'none'}">${sub}</div></div><span class="chev">›</span></li>`;
+  }).join(''):'<div class="empty">Ajoute tes machines et exercices préférés 👇</div>';
+  const remaining=SUGG.filter(n=>!D.exercises.some(x=>x.name.toLowerCase()===n.toLowerCase()));
+  document.getElementById('suggcard').style.display=remaining.length?'':'none';
+  document.getElementById('suggbtns').innerHTML=remaining.map(n=>`<button data-n="${n}">＋ ${n}</button>`).join('');
+}
+function addExercise(name){
+  name=(name||'').trim(); if(!name) return;
+  if(D.exercises.some(x=>x.name.toLowerCase()===name.toLowerCase())){ toast('Déjà dans ta liste 😉'); return; }
+  D.exercises.push({id:'x'+Date.now(), name});
+  save(); renderExoList(); toast('Exercice ajouté ✅');
+}
+function renderLastRef(){
+  const ll=lastLog(curExo);
+  document.getElementById('exo-lastref').innerHTML=ll
+    ? `Dernière fois (${fmtDate(ll.date)}) : <b>${fmtSets(ll.sets)}</b>${ll.note?`<br><i>« ${ll.note} »</i>`:''}`
+    : `Première fois sur cet exercice — ta perf d'aujourd'hui servira de référence.`;
+}
+function openExo(id){
+  const x=D.exercises.find(e=>e.id===id); if(!x) return;
+  curExo=id;
+  const ll=lastLog(id);
+  curSets=ll?ll.sets.map(s=>({w:s.w, r:s.r})):[{w:'', r:''}];
+  document.getElementById('exo-title').textContent=x.name;
+  document.getElementById('in-note').value='';
+  renderLastRef(); renderSetRows(); renderChart(); renderLogHist();
+  document.getElementById('exo-list-view').style.display='none';
+  document.getElementById('exo-detail-view').style.display='block';
+  window.scrollTo(0,0);
+}
+function closeExo(){
+  curExo=null;
+  document.getElementById('exo-detail-view').style.display='none';
+  document.getElementById('exo-list-view').style.display='block';
+  renderExoList();
+}
+function renderSetRows(){
+  document.getElementById('setrows').innerHTML=curSets.map((s,i)=>
+    `<div class="setrow">
+      <span class="num">${i+1}</span>
+      <input type="number" inputmode="decimal" step="0.5" placeholder="kg" value="${s.w}" data-i="${i}" data-k="w">
+      <input type="number" inputmode="numeric" placeholder="reps" value="${s.r}" data-i="${i}" data-k="r">
+      <button class="x" data-del="${i}">✕</button>
+    </div>`).join('');
+}
+function renderChart(){
+  const box=document.getElementById('exochart');
+  const ls=exoLogs(curExo).slice(-12);
+  if(ls.length<2){ box.innerHTML='<div class="empty">Le graphique apparaîtra à partir de 2 perfs enregistrées 📈</div>'; return; }
+  const vals=ls.map(bestW);
+  let lo=Math.min(...vals), hi=Math.max(...vals);
+  if(lo===hi){ lo-=5; hi+=5; }
+  const W=320, H=150, P=28;
+  const X=i=>P+i*(W-2*P)/(vals.length-1);
+  const Y=v=>H-P-(v-lo)*(H-2*P)/(hi-lo);
+  let svg=`<svg viewBox="0 0 ${W} ${H}">`;
+  svg+=`<line x1="${P}" y1="${Y(hi)}" x2="${W-P}" y2="${Y(hi)}" stroke="#2A3450" stroke-dasharray="3 4"/>`;
+  svg+=`<line x1="${P}" y1="${Y(lo)}" x2="${W-P}" y2="${Y(lo)}" stroke="#2A3450" stroke-dasharray="3 4"/>`;
+  svg+=`<text x="${P-5}" y="${Y(hi)+4}" fill="#8C96AA" font-size="10" text-anchor="end">${hi}</text>`;
+  svg+=`<text x="${P-5}" y="${Y(lo)+4}" fill="#8C96AA" font-size="10" text-anchor="end">${lo}</text>`;
+  svg+=`<polyline points="${vals.map((v,i)=>`${X(i)},${Y(v)}`).join(' ')}" fill="none" stroke="#3BD6A0" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  vals.forEach((v,i)=>{
+    svg+=`<circle cx="${X(i)}" cy="${Y(v)}" r="3.5" fill="#3BD6A0"/>`;
+    if(i===vals.length-1) svg+=`<text x="${Math.min(X(i),W-P)}" y="${Y(v)-9}" fill="#F5B63F" font-size="11" font-weight="700" text-anchor="middle">${v} kg</text>`;
+  });
+  svg+='</svg>';
+  const trend=vals[vals.length-1]>vals[0]?'Ça monte 📈':'Continue, ça va monter 💪';
+  box.innerHTML=svg+`<p class="hint">Meilleure charge par séance (12 dernières). ${trend}</p>`;
+}
+function renderLogHist(){
+  const ls=exoLogs(curExo).slice().reverse().slice(0,20);
+  document.getElementById('loghist').innerHTML=ls.length?ls.map(l=>
+    `<li><div class="lh-top"><b>${fmtDate(l.date)}</b><span><span class="lh-d">max ${bestW(l)} kg</span> <button class="del" data-ts="${l.ts}">✕</button></span></div>
+     <div class="lh-sets">${fmtSets(l.sets)}</div>${l.note?`<div class="lh-note">« ${l.note} »</div>`:''}</li>`).join('')
+   :'<div class="empty">Aucune perf pour l\'instant.</div>';
+}
+document.getElementById('exolist').addEventListener('click',e=>{
+  const li=e.target.closest('li[data-id]'); if(li) openExo(li.dataset.id);
+});
+document.getElementById('addexo').addEventListener('click',()=>{
+  const inp=document.getElementById('in-exoname');
+  addExercise(inp.value); inp.value='';
+});
+document.getElementById('in-exoname').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ addExercise(e.target.value); e.target.value=''; }
+});
+document.getElementById('suggbtns').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-n]'); if(b) addExercise(b.dataset.n);
+});
+document.getElementById('exoback').addEventListener('click',closeExo);
+document.getElementById('addset').addEventListener('click',()=>{
+  const last=curSets[curSets.length-1];
+  curSets.push({w:last?last.w:'', r:last?last.r:''});
+  renderSetRows();
+});
+document.getElementById('setrows').addEventListener('input',e=>{
+  const i=e.target.dataset.i, k=e.target.dataset.k;
+  if(i!==undefined && k) curSets[i][k]=e.target.value;
+});
+document.getElementById('setrows').addEventListener('click',e=>{
+  const b=e.target.closest('.x'); if(!b) return;
+  if(curSets.length<=1){ toast('Il faut au moins une série 😄'); return; }
+  curSets.splice(parseInt(b.dataset.del,10),1);
+  renderSetRows();
+});
+document.getElementById('savelog').addEventListener('click',()=>{
+  const sets=curSets.map(s=>({w:parseFloat(s.w), r:parseInt(s.r,10)})).filter(s=>s.w>0&&s.r>0);
+  if(!sets.length){ toast('Remplis au moins une série (kg + reps) 🙂'); return; }
+  const prev=lastLog(curExo);
+  const note=document.getElementById('in-note').value.trim();
+  D.logs.push({ts:Date.now(), date:today(), exId:curExo, sets, note});
+  save();
+  const best=sets.reduce((a,s)=>Math.max(a,s.w),0);
+  toast(prev&&best>bestW(prev)?`🚀 Record battu : ${best} kg !`:'Perf enregistrée 💪');
+  document.getElementById('in-note').value='';
+  curSets=sets.map(s=>({w:s.w, r:s.r}));
+  renderLastRef(); renderSetRows(); renderChart(); renderLogHist(); render();
+});
+document.getElementById('loghist').addEventListener('click',e=>{
+  const b=e.target.closest('.del'); if(!b) return;
+  D.logs=D.logs.filter(l=>String(l.ts)!==b.dataset.ts);
+  save(); renderLastRef(); renderChart(); renderLogHist(); render(); toast('Perf supprimée');
+});
+document.getElementById('delexo').addEventListener('click',()=>{
+  const x=D.exercises.find(e=>e.id===curExo); if(!x) return;
+  if(!confirm(`Supprimer « ${x.name} » et tout son historique ?`)) return;
+  D.exercises=D.exercises.filter(e=>e.id!==curExo);
+  D.logs=D.logs.filter(l=>l.exId!==curExo);
+  save(); closeExo(); render(); toast('Exercice supprimé');
 });
 
 /* ============ NAVIGATION ============ */

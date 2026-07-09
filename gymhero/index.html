@@ -215,6 +215,55 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
   padding:7px 2px; border-bottom:1px solid var(--line); font-size:14px;}
 .foodlist li:last-child{border-bottom:none;}
 .foodlist .fd{color:var(--muted); font-size:12px; margin-top:1px;}
+/* --- Alerte série & jokers --- */
+.dangercard{background:#2A1B18; border:1px solid var(--coral); border-radius:var(--radius);
+  padding:13px 15px; margin-bottom:14px; font-size:13px; line-height:1.55;}
+.dangercard b{color:var(--coral);}
+.jokerline{margin-top:10px; width:100%; background:var(--card2); border-radius:12px;
+  padding:10px 14px; display:flex; align-items:center; gap:10px; font-size:13px;}
+.jokerline .jk{font-size:20px;}
+.jokerline b{color:var(--gold);}
+/* --- Timer de repos --- */
+.timerbox{display:flex; align-items:center; gap:10px;}
+.timerbox .tdisp{font-family:ui-rounded; font-size:30px; font-weight:800; min-width:86px;
+  text-align:center; color:var(--teal);}
+.timerbox .tdisp.run{color:var(--gold);}
+.tpresets{display:flex; gap:6px; flex:1; flex-wrap:wrap;}
+.tpresets button{background:var(--card2); border:1px solid var(--line); color:var(--text);
+  border-radius:999px; padding:8px 12px; font-size:13px; font-family:ui-rounded; cursor:pointer;}
+.tpresets button:active{border-color:var(--teal);}
+.tpresets button.stop{color:var(--coral);}
+/* --- Routines --- */
+.routlist{list-style:none; margin:0 0 4px; padding:0;}
+.routlist li{display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:10px 2px; border-bottom:1px solid var(--line);}
+.routlist li:last-child{border-bottom:none;}
+.routlist .rn{font-size:15px; font-weight:600; font-family:ui-rounded;}
+.routlist .rc{font-size:12px; color:var(--muted); margin-top:2px;}
+.routlist .play{background:var(--teal); color:#06382A; border:none; border-radius:999px;
+  padding:8px 14px; font-size:13px; font-weight:800; font-family:ui-rounded; cursor:pointer;}
+.routedit{margin-top:12px; border-top:1px dashed var(--line); padding-top:12px;}
+.routchips{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 12px;}
+.routchips button{background:var(--card2); border:1px solid var(--line); color:var(--muted);
+  border-radius:999px; padding:7px 12px; font-size:13px; cursor:pointer;}
+.routchips button.on{border-color:var(--teal); color:var(--teal);}
+.routchips button.on::before{content:attr(data-ord) ' · ';}
+#routbanner{background:#16281f; border:1px solid var(--teal); border-radius:14px;
+  padding:11px 14px; margin-bottom:14px; display:flex; align-items:center;
+  justify-content:space-between; gap:10px; font-size:13px;}
+#routbanner b{color:var(--teal); font-family:ui-rounded;}
+#routbanner .btn{width:auto; padding:9px 14px; font-size:13px; margin:0;}
+/* --- Records --- */
+.reclist{list-style:none; margin:0; padding:0;}
+.reclist li{display:flex; justify-content:space-between; align-items:center;
+  padding:9px 2px; border-bottom:1px solid var(--line); font-size:14px;}
+.reclist li:last-child{border-bottom:none;}
+.reclist .rv{font-family:ui-rounded; font-weight:800; color:var(--gold);}
+.reclist .rd{color:var(--muted); font-size:11px; margin-left:6px;}
+/* --- Sauvegarde --- */
+.backuprow{display:flex; gap:10px;}
+.backuprow .btn{flex:1;}
+.witem.lock{filter:grayscale(1); opacity:.55;}
 /* --- animations de l'avatar --- */
 @media (prefers-reduced-motion: no-preference){
   .gh-idle{transform-box:fill-box; transform-origin:50% 100%; animation:gh-breathe 3.4s ease-in-out infinite;}
@@ -241,6 +290,7 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
   <!-- ================= HÉROS ================= -->
   <section id="scr-hero" class="screen active">
     <header class="top"><h1>GymHero</h1><span class="sub" id="herodate"></span></header>
+    <div class="dangercard" id="dangercard" style="display:none"></div>
     <div class="card">
       <div class="stage">
         <div class="bubble" id="bubble"></div>
@@ -260,6 +310,7 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
           <div class="stat weight"><div class="v" id="st-weight">–</div><div class="l">poids</div></div>
         </div>
         <div class="nextunlock" id="nextunlock"></div>
+        <div class="jokerline" id="jokerline"></div>
       </div>
     </div>
     <div class="card">
@@ -317,9 +368,22 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
       <button class="btn" id="savemes">Enregistrer → mettre l'avatar à jour</button>
       <p class="hint">Pas de balance impédancemètre ? Estime ton % de gras avec une photo comparative (cherche « body fat percentage chart »). L'important est d'utiliser toujours la même méthode pour voir l'évolution.</p>
     </div>
+    <div class="card" id="mescard" style="display:none;">
+      <h2>Évolution 📊</h2>
+      <div class="chartbox" id="meschart"></div>
+    </div>
     <div class="card">
       <h2>Historique</h2>
       <ul class="meslist" id="meslist"></ul>
+    </div>
+    <div class="card">
+      <h2>Sauvegarde 💾</h2>
+      <div class="backuprow">
+        <button class="btn ghost" id="exportbtn">Exporter</button>
+        <button class="btn ghost" id="importbtn">Importer</button>
+      </div>
+      <input type="file" id="importfile" accept=".json,application/json" style="display:none;">
+      <p class="hint">⚠️ Tes données vivent uniquement dans ce navigateur. Safari peut les effacer après une longue inactivité, et un changement de téléphone les perd. Exporte régulièrement ton fichier de sauvegarde (il contient tout : séances, perfs, mesures, nutrition, routines).</p>
     </div>
   </section>
 
@@ -335,6 +399,26 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
           <button class="btn" id="addexo">＋</button>
         </div>
       </div>
+      <div class="card">
+        <h2>Mes routines 📋</h2>
+        <ul class="routlist" id="routlist"></ul>
+        <button class="btn ghost" id="newrout">＋ Nouvelle routine</button>
+        <div class="routedit" id="routedit" style="display:none;">
+          <div class="field"><label>Nom de la routine</label><input id="in-routname" placeholder="Push, Pull, Jambes…"></div>
+          <label style="font-size:13px; color:var(--muted);">Exercices (dans l'ordre où tu tapes)</label>
+          <div class="routchips" id="routchips"></div>
+          <button class="btn" id="saverout">Enregistrer la routine</button>
+        </div>
+        <p class="hint">Lance une routine pour enchaîner tes exercices un par un, avec pré-remplissage automatique.</p>
+      </div>
+      <div class="card" id="reccard" style="display:none;">
+        <h2>Records 🏆</h2>
+        <ul class="reclist" id="reclist"></ul>
+      </div>
+      <div class="card" id="volcard" style="display:none;">
+        <h2>Volume d'entraînement</h2>
+        <div class="chartbox" id="volchart"></div>
+      </div>
       <div class="card" id="suggcard">
         <h2>Suggestions</h2>
         <div class="sugg" id="suggbtns"></div>
@@ -342,6 +426,10 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
     </div>
     <div id="exo-detail-view" style="display:none;">
       <header class="top"><button class="backbtn" id="exoback">‹ Exercices</button></header>
+      <div id="routbanner" style="display:none;">
+        <span id="routprog"></span>
+        <button class="btn" id="routnext">Suivant ›</button>
+      </div>
       <div class="card">
         <h2 id="exo-title"></h2>
         <div class="lastref" id="exo-lastref"></div>
@@ -349,6 +437,19 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
         <button class="btn ghost" id="addset" style="margin-bottom:12px;">＋ Ajouter une série</button>
         <div class="field"><label>Note (optionnel)</label><textarea class="notein" id="in-note" rows="2" placeholder="Sensations, réglage du siège, tempo…"></textarea></div>
         <button class="btn" id="savelog">Enregistrer la perf 💪</button>
+      </div>
+      <div class="card">
+        <h2>Repos entre séries ⏱️</h2>
+        <div class="timerbox">
+          <div class="tdisp" id="tdisp">–:––</div>
+          <div class="tpresets" id="tpresets">
+            <button data-s="60">1:00</button>
+            <button data-s="90">1:30</button>
+            <button data-s="120">2:00</button>
+            <button data-s="180">3:00</button>
+            <button class="stop" id="tstop" style="display:none;">Stop</button>
+          </div>
+        </div>
       </div>
       <div class="card">
         <h2>Progression</h2>
@@ -447,12 +548,13 @@ function load(){
     if(d){
       d.exercises=d.exercises||[]; d.logs=d.logs||[];
       d.meals=d.meals||[]; d.foods=d.foods||[]; d.nutri=d.nutri||{mode:'maintien',kcal:null,prot:null};
+      d.routines=d.routines||[]; d.flags=d.flags||{};
       if(d.profile&&!d.profile.sex) d.profile.sex='m';
       return d;
     }
   }catch(e){}
   return { sessions:[], measures:[], goal:3, profile:null, exercises:[], logs:[],
-    meals:[], foods:[], nutri:{mode:'maintien',kcal:null,prot:null} };
+    meals:[], foods:[], nutri:{mode:'maintien',kcal:null,prot:null}, routines:[], flags:{} };
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(D)); }
 
@@ -493,16 +595,32 @@ function uniqueDaysInWeek(monday){
   }
   return days;
 }
-function currentStreak(){
-  const goal=D.goal;
-  let mon=mondayOf(today());
-  let streak=0;
+/* Jokers : 1 gagné toutes les 4 semaines régulières (max 2 en réserve).
+   Une semaine ratée consomme un joker au lieu de casser la série.
+   Calcul déterministe à partir de l'historique — rien à stocker. */
+function streakInfo(){
+  const goal=D.goal, curMon=mondayOf(today());
+  const info={streak:0, jokers:0, saved:0};
+  if(D.sessions.length){
+    const firstMon=D.sessions.map(s=>mondayOf(s.date)).sort()[0];
+    let streak=0, bank=0, saved=0;
+    for(let m=firstMon; m<curMon; m=addDays(m,7)){
+      if(uniqueDaysInWeek(m).size>=goal){
+        streak++;
+        if(streak%4===0 && bank<2) bank++;
+      }else if(streak>0 && bank>0){
+        bank--; saved++; // joker consommé : la série survit (sans augmenter)
+      }else{
+        streak=0; bank=0;
+      }
+    }
+    info.streak=streak; info.jokers=bank; info.saved=saved;
+  }
   // la semaine en cours compte si l'objectif est déjà atteint, sinon elle ne casse pas la série
-  if(uniqueDaysInWeek(mon).size>=goal) streak++;
-  mon=addDays(mon,-7);
-  while(uniqueDaysInWeek(mon).size>=goal){ streak++; mon=addDays(mon,-7); }
-  return streak;
+  if(uniqueDaysInWeek(curMon).size>=goal) info.streak++;
+  return info;
 }
+function currentStreak(){ return streakInfo().streak; }
 function bestStreak(){
   if(D.sessions.length===0) return 0;
   const mondays=[...new Set(D.sessions.map(s=>mondayOf(s.date)))].sort();
@@ -719,6 +837,9 @@ function badgeDefs(){
     {e:'🍽️', n:'Bien nourri', c:'1 aliment noté', on:D.meals.length>=1},
     {e:'🥦', n:'Semaine nourrie', c:'7 jours de journal', on:new Set(D.meals.map(m=>m.date)).size>=7},
     {e:'🍗', n:'Protéiné', c:'objectif prot. ×5 jours', on:protDaysMet()>=5},
+    {e:'🃏', n:'Sauvé de justesse', c:'série sauvée par un joker', on:streakInfo().saved>=1},
+    {e:'📋', n:'Stratège', c:'1 routine créée', on:(D.routines||[]).length>=1},
+    {e:'💾', n:'Prévoyant', c:'1 sauvegarde exportée', on:!!(D.flags&&D.flags.exported)},
   ];
 }
 function hasPerfectWeek(){
@@ -751,10 +872,42 @@ function render(){
   } else {
     nu.innerHTML=`<span class="ico">🏆</span><span class="t"><b>Garde-robe complète !</b> Ton héros est au sommet — maintenant, maintiens la série.</span>`;
   }
+  // jokers
+  const si=streakInfo();
+  const jl=document.getElementById('jokerline');
+  if(si.jokers>0){
+    jl.style.display='';
+    jl.innerHTML=`<span class="jk">🃏</span><span>Réserve : <b>${si.jokers} joker${si.jokers>1?'s':''}</b> — une semaine ratée sera pardonnée automatiquement.</span>`;
+  }else{
+    jl.style.display='';
+    jl.innerHTML=`<span class="jk">🃏</span><span>Encore <b>${4-(si.streak%4)} semaine${4-(si.streak%4)>1?'s':''} régulière${4-(si.streak%4)>1?'s':''}</b> pour gagner un joker (protège ta série).</span>`;
+  }
+  // alerte : semaine en danger
+  const dgc=document.getElementById('dangercard');
+  const dMon=mondayOf(today());
+  const done=uniqueDaysInWeek(dMon).size;
+  const needed=D.goal-done;
+  const dayIdx=(new Date(today()+'T12:00:00').getDay()+6)%7; // lundi=0
+  const daysLeft=7-dayIdx; // aujourd'hui inclus
+  if(needed>0 && D.sessions.length>0 && si.streak>0){
+    if(daysLeft<needed){
+      dgc.style.display='';
+      dgc.innerHTML=si.jokers>0
+        ? `🃏 Objectif de la semaine hors de portée (${done}/${D.goal})… mais pas de panique : <b>un joker sauvera ta série</b>. La semaine prochaine, on repart fort.`
+        : `💔 Objectif de la semaine hors de portée (${done}/${D.goal}) et <b>aucun joker en réserve</b> — la série repartira de zéro. Chaque héros a ses chutes : l'important, c'est la suite.`;
+    }else if(daysLeft-needed<=1 && si.streak>0){
+      dgc.style.display='';
+      dgc.innerHTML=`⚠️ <b>Ta série est en danger !</b> Encore <b>${needed} séance${needed>1?'s':''}</b> en <b>${daysLeft} jour${daysLeft>1?'s':''}</b> pour valider la semaine. Ton héros compte sur toi. 🔥`;
+    }else{
+      dgc.style.display='none';
+    }
+  }else{
+    dgc.style.display='none';
+  }
   // garde-robe
   const items=unlockedItems();
   document.getElementById('wardrobe').innerHTML=UNLOCKS.map(u=>
-    `<span class="witem ${items.includes(u.id)?'on':''}">${u.e} ${u.n} · sem. ${u.w}</span>`).join('');
+    `<span class="witem ${items.includes(u.id)?'on':'lock'}">${u.e} ${u.n} · sem. ${u.w}</span>`).join('');
   // séances : semaine
   const mon=mondayOf(today());
   const days=uniqueDaysInWeek(mon);
@@ -790,8 +943,13 @@ function render(){
   document.getElementById('badgegrid').innerHTML=bd.map(b=>
     `<div class="badge ${b.on?'on':''}"><div class="e">${b.e}</div><div class="n">${b.n}</div><div class="c">${b.c}</div></div>`).join('');
   document.getElementById('badgecount').textContent=bd.filter(b=>b.on).length+' / '+bd.length+' débloqués';
+  // évolution des mesures
+  renderMesChart();
   // exercices
   renderExoList();
+  renderRoutines();
+  renderRecords();
+  renderVolChart();
   // nutrition
   if(typeof renderNutri==='function') renderNutri();
   // bulle de parole
@@ -890,16 +1048,16 @@ function openExo(id){
   curSets=ll?ll.sets.map(s=>({w:s.w, r:s.r})):[{w:'', r:''}];
   document.getElementById('exo-title').textContent=x.name;
   document.getElementById('in-note').value='';
-  renderLastRef(); renderSetRows(); renderChart(); renderLogHist();
+  renderLastRef(); renderSetRows(); renderChart(); renderLogHist(); renderRoutBanner();
   document.getElementById('exo-list-view').style.display='none';
   document.getElementById('exo-detail-view').style.display='block';
   window.scrollTo(0,0);
 }
 function closeExo(){
-  curExo=null;
+  curExo=null; routineRun=null; stopTimer();
   document.getElementById('exo-detail-view').style.display='none';
   document.getElementById('exo-list-view').style.display='block';
-  renderExoList();
+  renderExoList(); renderRoutines(); renderRecords(); renderVolChart();
 }
 function renderSetRows(){
   document.getElementById('setrows').innerHTML=curSets.map((s,i)=>
@@ -994,6 +1152,234 @@ document.getElementById('delexo').addEventListener('click',()=>{
   D.exercises=D.exercises.filter(e=>e.id!==curExo);
   D.logs=D.logs.filter(l=>l.exId!==curExo);
   save(); closeExo(); render(); toast('Exercice supprimé');
+});
+
+/* ============ ROUTINES ============ */
+let routineRun=null; // {rid, idx}
+let routEditSel=[]; // ids d'exos sélectionnés, dans l'ordre
+function renderRoutines(){
+  const ul=document.getElementById('routlist'); if(!ul) return;
+  ul.innerHTML=D.routines.length?D.routines.map(r=>{
+    const names=r.exIds.map(id=>(D.exercises.find(x=>x.id===id)||{}).name).filter(Boolean);
+    return `<li><div><div class="rn">${r.name}</div><div class="rc">${names.length} exo${names.length>1?'s':''} : ${names.join(', ')}</div></div>
+      <span style="display:flex; gap:4px; align-items:center;">
+        <button class="play" data-run="${r.id}">▶ Lancer</button>
+        <button class="del" data-rdel="${r.id}">✕</button>
+      </span></li>`;
+  }).join(''):'<div class="empty">Aucune routine — crée ta première séance type 👇</div>';
+}
+function renderRoutChips(){
+  document.getElementById('routchips').innerHTML=D.exercises.map(x=>{
+    const ord=routEditSel.indexOf(x.id);
+    return `<button data-rx="${x.id}" class="${ord>=0?'on':''}" data-ord="${ord+1}">${x.name}</button>`;
+  }).join('')||'<div class="empty">Ajoute d\u2019abord des exercices à ta liste ci-dessus.</div>';
+}
+document.getElementById('newrout').addEventListener('click',()=>{
+  const ed=document.getElementById('routedit');
+  const show=ed.style.display==='none';
+  ed.style.display=show?'block':'none';
+  if(show){ routEditSel=[]; document.getElementById('in-routname').value=''; renderRoutChips(); }
+});
+document.getElementById('routchips').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-rx]'); if(!b) return;
+  const id=b.dataset.rx, i=routEditSel.indexOf(id);
+  if(i>=0) routEditSel.splice(i,1); else routEditSel.push(id);
+  renderRoutChips();
+});
+document.getElementById('saverout').addEventListener('click',()=>{
+  const name=document.getElementById('in-routname').value.trim();
+  if(!name){ toast('Donne un nom à ta routine 🙂'); return; }
+  if(!routEditSel.length){ toast('Sélectionne au moins un exercice 🙂'); return; }
+  D.routines.push({id:'r'+Date.now(), name, exIds:[...routEditSel]});
+  save();
+  document.getElementById('routedit').style.display='none';
+  renderRoutines(); render(); toast('Routine créée 📋');
+});
+document.getElementById('routlist').addEventListener('click',e=>{
+  const del=e.target.closest('[data-rdel]');
+  if(del){
+    const r=D.routines.find(r=>r.id===del.dataset.rdel);
+    if(r && confirm(`Supprimer la routine « ${r.name} » ? (Tes perfs sont conservées.)`)){
+      D.routines=D.routines.filter(x=>x.id!==r.id);
+      save(); renderRoutines(); render(); toast('Routine supprimée');
+    }
+    return;
+  }
+  const run=e.target.closest('[data-run]');
+  if(run){
+    const r=D.routines.find(r=>r.id===run.dataset.run); if(!r) return;
+    const valid=r.exIds.filter(id=>D.exercises.some(x=>x.id===id));
+    if(!valid.length){ toast('Cette routine ne contient plus d\u2019exercices valides'); return; }
+    routineRun={rid:r.id, idx:0};
+    openExo(valid[0]);
+  }
+});
+function routValidIds(){
+  if(!routineRun) return [];
+  const r=D.routines.find(r=>r.id===routineRun.rid);
+  return r?r.exIds.filter(id=>D.exercises.some(x=>x.id===id)):[];
+}
+function renderRoutBanner(){
+  const bn=document.getElementById('routbanner'); if(!bn) return;
+  if(!routineRun){ bn.style.display='none'; return; }
+  const ids=routValidIds();
+  const r=D.routines.find(r=>r.id===routineRun.rid);
+  const last=routineRun.idx>=ids.length-1;
+  bn.style.display='';
+  document.getElementById('routprog').innerHTML=`📋 <b>${r.name}</b> — exo ${routineRun.idx+1}/${ids.length}`;
+  document.getElementById('routnext').textContent=last?'Terminer ✓':'Suivant ›';
+}
+document.getElementById('routnext').addEventListener('click',()=>{
+  if(!routineRun) return;
+  const ids=routValidIds();
+  if(routineRun.idx>=ids.length-1){
+    routineRun=null; stopTimer(); closeExo();
+    toast('Routine terminée, belle séance ! 🎉');
+    return;
+  }
+  routineRun.idx++;
+  stopTimer();
+  openExo(ids[routineRun.idx]);
+});
+
+/* ============ TIMER DE REPOS ============ */
+let timerEnd=null, timerInt=null;
+function fmtT(s){ return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+function stopTimer(){
+  clearInterval(timerInt); timerInt=null; timerEnd=null;
+  const d=document.getElementById('tdisp');
+  if(d){ d.textContent='–:––'; d.classList.remove('run'); }
+  const st=document.getElementById('tstop'); if(st) st.style.display='none';
+}
+function tickTimer(){
+  const left=Math.max(0, Math.round((timerEnd-Date.now())/1000));
+  const d=document.getElementById('tdisp');
+  if(d) d.textContent=fmtT(left);
+  if(left<=0){
+    stopTimer();
+    if(d) d.textContent='0:00';
+    if(navigator.vibrate) navigator.vibrate([200,100,200,100,400]);
+    toast('⏱️ Repos terminé — série suivante !');
+  }
+}
+document.getElementById('tpresets').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-s]');
+  if(b){
+    stopTimer();
+    timerEnd=Date.now()+parseInt(b.dataset.s,10)*1000;
+    document.getElementById('tdisp').classList.add('run');
+    document.getElementById('tstop').style.display='';
+    tickTimer();
+    timerInt=setInterval(tickTimer,250);
+    return;
+  }
+  if(e.target.closest('#tstop')) stopTimer();
+});
+
+/* ============ RECORDS & VOLUME ============ */
+function renderRecords(){
+  const card=document.getElementById('reccard'); if(!card) return;
+  const recs=D.exercises.map(x=>{
+    let best=0, date=null;
+    exoLogs(x.id).forEach(l=>{ const b=bestW(l); if(b>best){ best=b; date=l.date; } });
+    return best>0?{name:x.name, best, date}:null;
+  }).filter(Boolean).sort((a,b)=>b.best-a.best);
+  if(!recs.length){ card.style.display='none'; return; }
+  card.style.display='';
+  document.getElementById('reclist').innerHTML=recs.map(r=>
+    `<li><span>${r.name}</span><span><span class="rv">${r.best} kg</span><span class="rd">${fmtDate(r.date)}</span></span></li>`).join('');
+}
+function weekVolume(monday){
+  return D.logs.reduce((a,l)=>mondayOf(l.date)===monday
+    ? a+l.sets.reduce((x,s)=>x+(s.w||0)*(s.r||0),0) : a, 0);
+}
+function renderVolChart(){
+  const card=document.getElementById('volcard'); if(!card) return;
+  if(!D.logs.length){ card.style.display='none'; return; }
+  const curMon=mondayOf(today());
+  const weeks=[]; for(let i=7;i>=0;i--) weeks.push(addDays(curMon,-7*i));
+  const vals=weeks.map(weekVolume);
+  if(!vals.some(v=>v>0)){ card.style.display='none'; return; }
+  card.style.display='';
+  const W=320, H=140, P=24;
+  const hi=Math.max(...vals)*1.12;
+  const bw=(W-2*P)/weeks.length;
+  const Y=v=>H-20-(v/hi)*(H-40);
+  let svg=`<svg viewBox="0 0 ${W} ${H}">`;
+  weeks.forEach((m,i)=>{
+    const v=vals[i], x=P+i*bw+bw*0.18, w=bw*0.64;
+    const y=v?Y(v):H-23, h=v?(H-20-y):3;
+    svg+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="3.5" fill="${m===curMon?'#F5B63F':'#3BD6A0'}"/>`;
+    if(v>0 && (i===weeks.length-1 || v===Math.max(...vals)))
+      svg+=`<text x="${(x+w/2).toFixed(1)}" y="${(y-4).toFixed(1)}" fill="#8C96AA" font-size="9" text-anchor="middle">${(v/1000).toFixed(1)}t</text>`;
+    const lab=new Date(m+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'numeric'});
+    svg+=`<text x="${(x+w/2).toFixed(1)}" y="${H-6}" fill="#8C96AA" font-size="8.5" text-anchor="middle">${lab}</text>`;
+  });
+  svg+='</svg>';
+  document.getElementById('volchart').innerHTML=svg+
+    '<p class="hint">Tonnage hebdomadaire (kg × reps, toutes perfs confondues). Semaine en cours en doré.</p>';
+}
+
+/* ============ ÉVOLUTION MESURES ============ */
+function renderMesChart(){
+  const card=document.getElementById('mescard'); if(!card) return;
+  const mes=[...D.measures].sort((a,b)=>a.date.localeCompare(b.date));
+  if(mes.length<2){ card.style.display='none'; return; }
+  card.style.display='';
+  const pts=mes.slice(-20);
+  const W=320, H=150, P=30;
+  const ws=pts.map(m=>m.w), bfs=pts.map(m=>m.bf);
+  let wlo=Math.min(...ws), whi=Math.max(...ws); if(wlo===whi){ wlo-=2; whi+=2; }
+  let blo=Math.min(...bfs), bhi=Math.max(...bfs); if(blo===bhi){ blo-=2; bhi+=2; }
+  const X=i=>P+i*(W-2*P)/(pts.length-1);
+  const Yw=v=>H-P-(v-wlo)*(H-2*P)/(whi-wlo);
+  const Yb=v=>H-P-(v-blo)*(H-2*P)/(bhi-blo);
+  let svg=`<svg viewBox="0 0 ${W} ${H}">`;
+  svg+=`<text x="${P-5}" y="${Yw(whi)+4}" fill="#3BD6A0" font-size="10" text-anchor="end">${whi}</text>`;
+  svg+=`<text x="${P-5}" y="${Yw(wlo)+4}" fill="#3BD6A0" font-size="10" text-anchor="end">${wlo}</text>`;
+  svg+=`<text x="${W-P+5}" y="${Yb(bhi)+4}" fill="#F5B63F" font-size="10">${bhi}%</text>`;
+  svg+=`<text x="${W-P+5}" y="${Yb(blo)+4}" fill="#F5B63F" font-size="10">${blo}%</text>`;
+  svg+=`<polyline points="${bfs.map((v,i)=>`${X(i)},${Yb(v)}`).join(' ')}" fill="none" stroke="#F5B63F" stroke-width="2" stroke-dasharray="4 4" stroke-linejoin="round"/>`;
+  svg+=`<polyline points="${ws.map((v,i)=>`${X(i)},${Yw(v)}`).join(' ')}" fill="none" stroke="#3BD6A0" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  ws.forEach((v,i)=>{ svg+=`<circle cx="${X(i)}" cy="${Yw(v)}" r="3" fill="#3BD6A0"/>`; });
+  svg+='</svg>';
+  const dw=(ws[ws.length-1]-ws[0]).toFixed(1), db=(bfs[bfs.length-1]-bfs[0]).toFixed(1);
+  document.getElementById('meschart').innerHTML=svg+
+    `<p class="hint"><span style="color:#3BD6A0;">— Poids</span> : ${dw>0?'+':''}${dw} kg &nbsp;·&nbsp; <span style="color:#F5B63F;">-- Masse grasse</span> : ${db>0?'+':''}${db} pts depuis le début du suivi.</p>`;
+}
+
+/* ============ SAUVEGARDE ============ */
+document.getElementById('exportbtn').addEventListener('click',()=>{
+  D.flags.exported=true; save();
+  const blob=new Blob([JSON.stringify(D,null,1)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='gymhero-sauvegarde-'+today()+'.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },500);
+  render(); toast('Sauvegarde exportée 💾');
+});
+document.getElementById('importbtn').addEventListener('click',()=>{
+  document.getElementById('importfile').click();
+});
+document.getElementById('importfile').addEventListener('change',e=>{
+  const file=e.target.files[0]; e.target.value='';
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const d=JSON.parse(reader.result);
+      if(!d || typeof d!=='object' || !Array.isArray(d.sessions))
+        throw new Error('format');
+      if(!confirm(`Restaurer cette sauvegarde ? (${d.sessions.length} séances, ${(d.logs||[]).length} perfs, ${(d.measures||[]).length} mesures)\n\n⚠️ Les données actuelles seront remplacées.`)) return;
+      localStorage.setItem(KEY, JSON.stringify(d));
+      D=load(); selSex=(D.profile&&D.profile.sex)||'m'; renderSexBtns();
+      render(); toast('Sauvegarde restaurée ✅');
+    }catch(err){
+      toast('Fichier invalide — export GymHero attendu 😕');
+    }
+  };
+  reader.readAsText(file);
 });
 
 /* ============ NUTRITION ============ */

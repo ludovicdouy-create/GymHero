@@ -36,6 +36,15 @@ header.top .sub{color:var(--muted); font-size:13px;}
 .grow{flex:1;}
 /* --- Héros --- */
 .stage{position:relative; display:flex; flex-direction:column; align-items:center; padding:8px 0 4px;}
+.bubble{position:relative; background:var(--card2); border:1px solid var(--line);
+  border-radius:14px; padding:11px 14px; font-size:13px; line-height:1.55;
+  margin-bottom:15px; width:100%; cursor:pointer; animation:fadein .3s ease; user-select:none; -webkit-user-select:none;}
+.bubble:after{content:''; position:absolute; bottom:-7px; left:50%;
+  transform:translateX(-50%) rotate(45deg); width:12px; height:12px;
+  background:var(--card2); border-right:1px solid var(--line); border-bottom:1px solid var(--line);}
+.bubble .tag{display:block; font-size:10px; color:var(--gold); margin-bottom:4px;
+  text-transform:uppercase; letter-spacing:.6px; font-weight:700; font-family:ui-rounded;}
+.bubble .rr{color:var(--muted); font-size:12px; margin-left:4px;}
 .ringwrap{position:relative; width:270px; height:270px;}
 .ringwrap svg.ring{position:absolute; inset:0;}
 .avatarbox{position:absolute; inset:18px; display:flex; align-items:center; justify-content:center;}
@@ -234,6 +243,7 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
     <header class="top"><h1>GymHero</h1><span class="sub" id="herodate"></span></header>
     <div class="card">
       <div class="stage">
+        <div class="bubble" id="bubble"></div>
         <div class="ringwrap">
           <svg class="ring" viewBox="0 0 270 270">
             <circle cx="135" cy="135" r="128" fill="none" stroke="#212B40" stroke-width="7"/>
@@ -784,6 +794,8 @@ function render(){
   renderExoList();
   // nutrition
   if(typeof renderNutri==='function') renderNutri();
+  // bulle de parole
+  if(typeof renderSpeech==='function') renderSpeech();
 }
 
 /* ============ ACTIONS ============ */
@@ -1160,6 +1172,83 @@ document.getElementById('in-pprot').addEventListener('input',e=>{
   const v=parseInt(e.target.value,10);
   if(v>0){ D.nutri.prot=v; save(); renderNutri(); }
 });
+
+/* ============ BULLE DE PAROLE ============ */
+const SPEECH_MOTI=[
+  'Un jour à la fois. Une série à la fois. C\u2019est comme ça qu\u2019on construit un héros.',
+  'La régularité bat l\u2019intensité : trois séances moyennes valent mieux qu\u2019une séance parfaite.',
+  'Ton seul adversaire, c\u2019est toi d\u2019il y a une semaine.',
+  'Les résultats se construisent les jours où tu n\u2019as pas envie.',
+  'Pas besoin d\u2019être motivé tous les jours. Juste discipliné.',
+  'Le plus dur, c\u2019est d\u2019enfiler les baskets. Le reste suit.',
+  'Rome ne s\u2019est pas faite en un jour. Tes épaules non plus.',
+  'Fais-le pour le toi de dans 6 mois. Il te dira merci.',
+  'Un héros, ça ne se télécharge pas. Ça s\u2019entraîne.',
+  'La fonte ne se soulève pas toute seule. Heureusement, tu es là.',
+  'Petit rappel : tu es à une séance de te sentir mieux.',
+  'Chaque rep te rapproche de la version de toi que tu veux devenir.',
+];
+const SPEECH_FACT=[
+  'L\u2019alcool après une séance peut réduire la synthèse des protéines musculaires jusqu\u2019à un tiers. La bière post-entraînement, c\u2019est un peu saboter son propre travail. 🍺',
+  'L\u2019alcool perturbe aussi le sommeil profond, là où ton corps répare le muscle. Double peine pour la récupération.',
+  'Les courbatures ne viennent pas de l\u2019acide lactique : ce sont des micro-lésions musculaires. Le lactate, lui, est éliminé en moins d\u2019une heure.',
+  '1 kg de muscle brûle environ 3 fois plus de calories au repos que 1 kg de graisse. Plus de muscle = métabolisme plus rapide, même sur le canapé.',
+  'Ton corps assimile mieux les protéines réparties dans la journée (20 à 40 g par repas) qu\u2019en une seule prise géante.',
+  'Tes premiers gains de force viennent surtout de ton système nerveux, qui apprend à mieux recruter tes muscles — avant même qu\u2019ils grossissent.',
+  'Le muscle, c\u2019est environ 75 % d\u2019eau. Une déshydratation de seulement 2 % suffit à faire chuter tes performances. 💧',
+  'L\u2019hormone de croissance est surtout sécrétée pendant le sommeil profond. Dormir, c\u2019est de la muscu passive. 😴',
+  'Le muscle ne se transforme jamais en graisse (ni l\u2019inverse) : ce sont deux tissus différents. Il fond juste si on ne l\u2019utilise pas.',
+  'En tant que débutant, tu peux gagner du muscle ET perdre du gras en même temps. Profite des « newbie gains », ça ne dure pas éternellement.',
+  'La caféine est l\u2019un des rares « boosters » réellement prouvés : un café 30 à 60 minutes avant la séance. ☕',
+  'Pour la force, repose-toi 2 à 3 minutes entre les séries : le temps que tes muscles rechargent leur carburant (l\u2019ATP).',
+  'Une nuit trop courte fait chuter la testostérone et grimper le cortisol : le combo parfait… pour ne pas progresser.',
+  'Des protéines lentes le soir (fromage blanc, skyr) nourrissent tes muscles pendant toute la nuit.',
+  'Le squat sollicite plus de 200 muscles. Oui, même certains dont tu ignorais l\u2019existence.',
+  'La clé de la progression : la surcharge progressive. Un peu plus lourd ou une rep de plus, semaine après semaine — ton onglet Exos est là pour ça. 📈',
+];
+let speechIdx=null;
+function speechPool(){
+  const pool=[];
+  // messages contextuels (prioritaires en début de journée)
+  const st=currentStreak();
+  const days=uniqueDaysInWeek(mondayOf(today())).size;
+  if(D.sessions.length===0)
+    pool.push({tag:'Ton héros', t:'🫡 La première séance est la plus importante de toutes. J\u2019attends mon origin story !'});
+  if(days>=D.goal)
+    pool.push({tag:'Ton héros', t:`🔥 Objectif de la semaine atteint (${days}/${D.goal}) — la série continue, je reste classe.`});
+  const nt=nutriTargets(), tot=dayTotals(today());
+  if(tot.prot>=nt.prot)
+    pool.push({tag:'Ton héros', t:'🍗 Objectif protéines atteint aujourd\u2019hui. Mes muscles te disent merci.'});
+  const next=UNLOCKS.find(u=>st<u.w);
+  if(next && next.w-st===1)
+    pool.push({tag:'Ton héros', t:`${next.e} Encore une semaine régulière et je porte enfin : ${next.n} !`});
+  SPEECH_MOTI.forEach(t=>pool.push({tag:'Motivation', t:'💪 '+t}));
+  SPEECH_FACT.forEach(t=>pool.push({tag:'Le savais-tu ?', t:'🧠 '+t}));
+  return pool;
+}
+function daySeed(){
+  let h=0; for(const c of today()) h=(h*31+c.charCodeAt(0))>>>0;
+  return h;
+}
+function renderSpeech(){
+  const el=document.getElementById('bubble'); if(!el) return;
+  const pool=speechPool();
+  if(speechIdx===null) speechIdx=daySeed()%pool.length;
+  const q=pool[speechIdx%pool.length];
+  el.innerHTML=`<span class="tag">${q.tag}</span>${q.t}<span class="rr">↻</span>`;
+}
+function nextSpeech(){
+  const pool=speechPool();
+  if(pool.length>1){
+    let n; do{ n=Math.floor(Math.random()*pool.length); }while(n===speechIdx%pool.length);
+    speechIdx=n;
+  }
+  const el=document.getElementById('bubble');
+  el.style.animation='none'; void el.offsetWidth; el.style.animation='';
+  renderSpeech();
+}
+document.getElementById('bubble').addEventListener('click',nextSpeech);
+document.getElementById('avatarbox').addEventListener('click',nextSpeech);
 
 /* ============ NAVIGATION ============ */
 document.querySelectorAll('nav button').forEach(b=>{

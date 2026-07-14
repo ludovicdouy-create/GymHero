@@ -213,6 +213,26 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
 .qtyrow button{background:var(--card2); border:1px solid var(--line); color:var(--text);
   border-radius:10px; width:34px; height:34px; font-size:17px; cursor:pointer; font-family:ui-rounded;}
 .qtyrow .qv{font-family:ui-rounded; font-weight:700; color:var(--text); min-width:34px; text-align:center;}
+/* --- Scanner code-barres --- */
+.btn.scan{background:var(--card2); color:var(--text); border:1px solid var(--line); font-weight:600; margin:-2px 0 12px;}
+.scanmodal{display:none; position:fixed; inset:0; z-index:60; background:#000; flex-direction:column;}
+.scanmodal.show{display:flex;}
+.scanhead{display:flex; align-items:center; justify-content:space-between;
+  padding:calc(env(safe-area-inset-top) + 12px) 16px 12px; color:#fff; font-weight:600;}
+.scanhead button{background:rgba(255,255,255,.14); border:none; color:#fff; font-size:16px;
+  width:34px; height:34px; border-radius:50%;}
+.scanview{position:relative; flex:1; overflow:hidden; display:flex; align-items:center; justify-content:center;}
+.scanview video{width:100%; height:100%; object-fit:cover;}
+.scanframe{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+  width:min(78%,320px); height:150px; border:2.5px solid var(--gold); border-radius:16px;
+  box-shadow:0 0 0 2000px rgba(0,0,0,.35); pointer-events:none;}
+.scanstatus{margin:0; padding:12px 16px; color:#fff; font-size:13px; text-align:center; min-height:20px;}
+.scanmanual{display:flex; gap:8px; padding:0 16px calc(env(safe-area-inset-bottom) + 16px);}
+.scanmanual input{flex:1; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.25);
+  border-radius:12px; color:#fff; padding:11px 12px; font-size:15px;}
+.scanmanual input::placeholder{color:rgba(255,255,255,.55);}
+.scanmanual button{background:var(--gold); border:none; color:#3A2A05; font-weight:700;
+  border-radius:12px; padding:0 18px; font-size:14px;}
 .favwrap{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
 .favchip{background:var(--card2); border:1px solid var(--line); color:var(--text);
   border-radius:999px; padding:7px 12px; font-size:13px; cursor:pointer;
@@ -514,6 +534,7 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
     <div class="card">
       <h2>Ajouter un aliment</h2>
       <div class="mealseg" id="mealseg"></div>
+      <button class="btn scan" id="scanbtn">📷 Scanner un code-barres</button>
       <div class="foodline">
         <input class="fname" id="in-fname" placeholder="Aliment…">
         <input class="fnum" id="in-fkcal" type="number" inputmode="numeric" placeholder="kcal">
@@ -526,7 +547,7 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
       </div>
       <button class="btn" id="addfood">Ajouter au journal 🍽️</button>
       <div class="favwrap" id="favwrap"></div>
-      <p class="hint">Tape un nom (« oeuf », « riz »…) : kcal et protéines s'estiment automatiquement, ajuste la quantité avec − / +. Tes aliments sont mémorisés : la prochaine fois, un seul tap sur la pastille suffit. ✕ pour retirer un favori.</p>
+      <p class="hint">Tape un nom (« oeuf », « riz »…) ou scanne le code-barres d'un produit : kcal et protéines se remplissent automatiquement (base Open Food Facts, mémorisée hors ligne après le premier scan), ajuste la quantité avec − / +. Tes aliments sont mémorisés : la prochaine fois, un seul tap sur la pastille suffit. ✕ pour retirer un favori.</p>
     </div>
     <div class="card">
       <h2 id="journaltitle">Journal du jour</h2>
@@ -537,6 +558,20 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
       <div class="chartbox" id="nutrichart"></div>
     </div>
   </section>
+
+  <!-- ================= SCANNER ================= -->
+  <div class="scanmodal" id="scanmodal">
+    <div class="scanhead"><span>📷 Scanner un produit</span><button id="scanclose">✕</button></div>
+    <div class="scanview">
+      <video id="scanvideo" playsinline muted></video>
+      <div class="scanframe"></div>
+    </div>
+    <p class="scanstatus" id="scanstatus"></p>
+    <div class="scanmanual">
+      <input id="scancode" inputmode="numeric" placeholder="Ou tape le code-barres ici…">
+      <button id="scango">OK</button>
+    </div>
+  </div>
 
   <!-- ================= BADGES ================= -->
   <section id="scr-badges" class="screen">
@@ -567,13 +602,13 @@ function load(){
     if(d){
       d.exercises=d.exercises||[]; d.logs=d.logs||[];
       d.meals=d.meals||[]; d.foods=d.foods||[]; d.nutri=d.nutri||{mode:'maintien',kcal:null,prot:null};
-      d.routines=d.routines||[]; d.flags=d.flags||{};
+      d.routines=d.routines||[]; d.flags=d.flags||{}; d.scanCache=d.scanCache||{};
       if(d.profile&&!d.profile.sex) d.profile.sex='m';
       return d;
     }
   }catch(e){}
   return { sessions:[], measures:[], goal:3, profile:null, exercises:[], logs:[],
-    meals:[], foods:[], nutri:{mode:'maintien',kcal:null,prot:null}, routines:[], flags:{} };
+    meals:[], foods:[], nutri:{mode:'maintien',kcal:null,prot:null}, routines:[], flags:{}, scanCache:{} };
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(D)); }
 
@@ -1707,6 +1742,161 @@ document.getElementById('sugbox').addEventListener('click',e=>{
 document.getElementById('qminus').addEventListener('click',()=>{ if(selQty>0.5){ selQty=Math.round((selQty-0.5)*10)/10; applyQty(); } });
 document.getElementById('qplus').addEventListener('click',()=>{ selQty=Math.round((selQty+0.5)*10)/10; applyQty(); });
 ['in-fkcal','in-fprot'].forEach(id=>document.getElementById(id).addEventListener('input',clearFoodSel));
+
+/* ============ SCANNER CODE-BARRES ============ */
+let scanStream=null, scanLoop=null, scanZX=null, scanBusy=false;
+function scanStatus(msg){ const s=document.getElementById('scanstatus'); if(s) s.textContent=msg; }
+function normCode(c){ return String(c||'').replace(/\D/g,''); }
+
+function cacheScan(code, prod){
+  D.scanCache[code]={n:prod.n, k:prod.k, p:prod.p, ts:Date.now()};
+  const keys=Object.keys(D.scanCache);
+  if(keys.length>300){ // limite : on retire les plus anciens
+    keys.sort((a,b)=>D.scanCache[a].ts-D.scanCache[b].ts).slice(0,keys.length-300)
+        .forEach(k=>delete D.scanCache[k]);
+  }
+  save();
+}
+
+async function offLookup(code){
+  const ctl=new AbortController();
+  const to=setTimeout(()=>ctl.abort(),8000);
+  try{
+    const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,product_name_fr,brands,nutriments`,{signal:ctl.signal});
+    clearTimeout(to);
+    if(!r.ok) return null;
+    const j=await r.json();
+    if(j.status!==1 || !j.product) return null;
+    const p=j.product, nu=p.nutriments||{};
+    let k=nu['energy-kcal_100g'];
+    if(!(k>0) && nu['energy_100g']>0) k=nu['energy_100g']/4.184; // kJ → kcal
+    if(!(k>0)) return null;
+    const prot=nu['proteins_100g']>0?Math.round(nu['proteins_100g']*10)/10:0;
+    let name=(p.product_name_fr||p.product_name||'Produit scanné').trim();
+    if(p.brands) name+=' ('+p.brands.split(',')[0].trim()+')';
+    if(name.length>60) name=name.slice(0,57)+'…';
+    return {n:name, k:Math.round(k), p:prot};
+  }catch(e){ clearTimeout(to); return null; }
+}
+
+async function handleBarcode(code){
+  code=normCode(code);
+  if(!code || code.length<6 || scanBusy) return;
+  scanBusy=true;
+  if(navigator.vibrate) navigator.vibrate(60);
+  scanStatus('Code '+code+' — recherche du produit…');
+  let prod=await offLookup(code);
+  let fromCache=false;
+  if(!prod && D.scanCache[code]){ prod=D.scanCache[code]; fromCache=true; }
+  if(!prod){
+    scanStatus(navigator.onLine
+      ? 'Produit introuvable dans Open Food Facts 😕 Réessaie ou saisis-le à la main.'
+      : 'Hors ligne et produit jamais scanné — réessaie avec du réseau 📡');
+    scanBusy=false;
+    return;
+  }
+  if(!fromCache) cacheScan(code, prod);
+  closeScanner();
+  // Préremplir la ligne aliment : valeurs pour 100 g, quantité ajustable
+  selFood={n:prod.n, k:prod.k, p:prod.p, u:'100 g'};
+  selQty=1;
+  document.getElementById('in-fname').value=prod.n;
+  document.getElementById('qunit').textContent='× 100 g';
+  document.getElementById('qtyrow').classList.add('show');
+  applyQty(); hideSugs();
+  toast(fromCache?'Produit retrouvé hors ligne 📦':'Produit trouvé ✅ Ajuste la quantité');
+}
+
+function stopDetection(){
+  if(scanLoop){ clearInterval(scanLoop); scanLoop=null; }
+  if(scanZX){ try{ scanZX.reset(); }catch(e){} scanZX=null; }
+}
+function closeScanner(){
+  stopDetection();
+  if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
+  const v=document.getElementById('scanvideo'); if(v) v.srcObject=null;
+  document.getElementById('scanmodal').classList.remove('show');
+  scanBusy=false;
+}
+
+function loadZXing(){
+  return new Promise((res,rej)=>{
+    if(window.ZXing) return res();
+    const s=document.createElement('script');
+    s.src='./zxing.min.js';
+    s.onload=()=>res(); s.onerror=()=>rej(new Error('zxing'));
+    document.head.appendChild(s);
+  });
+}
+
+async function startDetection(video){
+  const FORMATS=['ean_13','ean_8','upc_a','upc_e','code_128'];
+  // 1) API native (Chrome / Android)
+  if('BarcodeDetector' in window){
+    try{
+      const supported=await window.BarcodeDetector.getSupportedFormats();
+      const fmts=FORMATS.filter(f=>supported.includes(f));
+      if(fmts.length){
+        const det=new window.BarcodeDetector({formats:fmts});
+        scanLoop=setInterval(async()=>{
+          if(scanBusy || video.readyState<2) return;
+          try{
+            const codes=await det.detect(video);
+            if(codes.length) handleBarcode(codes[0].rawValue);
+          }catch(e){}
+        },250);
+        return;
+      }
+    }catch(e){}
+  }
+  // 2) Fallback ZXing (Safari iOS notamment)
+  scanStatus('Chargement du module de scan…');
+  await loadZXing();
+  scanStatus('Vise le code-barres 🎯');
+  const hints=new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
+    ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E, ZXing.BarcodeFormat.CODE_128]);
+  scanZX=new ZXing.BrowserMultiFormatReader(hints, 300);
+  scanZX.decodeFromVideoElementContinuously(video,(result)=>{
+    if(result && !scanBusy) handleBarcode(result.getText());
+  });
+}
+
+async function openScanner(){
+  const modal=document.getElementById('scanmodal');
+  modal.classList.add('show');
+  document.getElementById('scancode').value='';
+  scanBusy=false;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    scanStatus('Caméra indisponible sur cet appareil — utilise la saisie manuelle ⬇️');
+    return;
+  }
+  scanStatus('Ouverture de la caméra…');
+  try{
+    scanStream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'environment', width:{ideal:1280}, height:{ideal:720}}, audio:false});
+    const video=document.getElementById('scanvideo');
+    video.srcObject=scanStream;
+    await video.play();
+    scanStatus('Vise le code-barres 🎯');
+    await startDetection(video);
+  }catch(e){
+    scanStatus(e && e.name==='NotAllowedError'
+      ? 'Accès caméra refusé — autorise-le dans les réglages, ou saisis le code à la main ⬇️'
+      : 'Impossible d\u2019ouvrir la caméra 😕 Saisis le code à la main ⬇️');
+  }
+}
+
+document.getElementById('scanbtn').addEventListener('click',openScanner);
+document.getElementById('scanclose').addEventListener('click',closeScanner);
+document.getElementById('scango').addEventListener('click',()=>{
+  const c=normCode(document.getElementById('scancode').value);
+  if(c.length>=6) handleBarcode(c); else scanStatus('Code trop court — 8 ou 13 chiffres en général 🙂');
+});
+document.getElementById('scancode').addEventListener('keydown',e=>{
+  if(e.key==='Enter') document.getElementById('scango').click();
+});
 document.addEventListener('click',e=>{
   if(!e.target.closest('#sugbox') && e.target.id!=='in-fname') hideSugs();
 });

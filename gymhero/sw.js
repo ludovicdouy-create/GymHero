@@ -1,5 +1,5 @@
-const CACHE = 'gymhero-v7';
-const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+const CACHE = 'gymhero-v8';
+const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './zxing.min.js'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
 });
@@ -9,6 +9,7 @@ self.addEventListener('activate', e => {
   ).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {
+  if (new URL(e.request.url).origin !== location.origin) return; // API externes (Open Food Facts) : réseau direct
   e.respondWith(
     caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
       const copy = res.clone();

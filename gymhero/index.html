@@ -191,6 +191,13 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
 .nbar.kcal .fill{background:var(--gold);}
 .nbar.over .fill{background:var(--coral);}
 .mealseg{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px;}
+.sessdate{display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px;}
+.sessdate button{background:var(--card2); border:1px solid var(--line); color:var(--muted);
+  border-radius:10px; padding:9px 2px; font-size:12px; cursor:pointer; font-family:ui-rounded;}
+.sessdate button.on{border-color:var(--teal); color:var(--teal);}
+.sdpick{display:none; width:100%; background:var(--card2); border:1px solid var(--line); color:var(--text);
+  border-radius:10px; padding:10px; font-size:14px; margin:-6px 0 12px; font-family:ui-rounded; color-scheme:dark;}
+.sdpick.show{display:block;}
 .mealseg button{background:var(--card2); border:1px solid var(--line); color:var(--muted);
   border-radius:10px; padding:9px 2px; font-size:12px; cursor:pointer; font-family:ui-rounded;}
 .mealseg button.on{border-color:var(--teal); color:var(--teal);}
@@ -379,6 +386,12 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
     </div>
     <div class="card">
       <h2>J'ai fait ma séance 💪</h2>
+      <div class="sessdate" id="sessdate">
+        <button data-sd="today" class="on">Aujourd'hui</button>
+        <button data-sd="yesterday">Hier</button>
+        <button data-sd="pick">📅 Autre jour</button>
+      </div>
+      <input type="date" id="sessdatepick" class="sdpick" aria-label="Date de la séance">
       <div class="typebtns" id="typebtns"></div>
     </div>
     <div class="card">
@@ -1022,20 +1035,56 @@ function toast(msg){
 }
 document.getElementById('typebtns').innerHTML=TYPES.map(t=>
   `<button class="typebtn" data-type="${t.id}"><span class="e">${t.e}</span>${t.n}</button>`).join('');
+/* --- Choix du jour de la séance (aujourd'hui / hier / autre) --- */
+let sessDate=null; // null = aujourd'hui
+function renderSessDate(){
+  const box=document.getElementById('sessdate'), pick=document.getElementById('sessdatepick');
+  const t=today(), y=addDays(t,-1);
+  box.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+  if(!sessDate || sessDate===t){ sessDate=null; box.querySelector('[data-sd="today"]').classList.add('on'); pick.classList.remove('show'); }
+  else if(sessDate===y){ box.querySelector('[data-sd="yesterday"]').classList.add('on'); pick.classList.remove('show'); }
+  else { box.querySelector('[data-sd="pick"]').classList.add('on'); pick.value=sessDate; pick.classList.add('show'); }
+}
+document.getElementById('sessdate').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-sd]'); if(!b) return;
+  const pick=document.getElementById('sessdatepick');
+  if(b.dataset.sd==='today') sessDate=null;
+  else if(b.dataset.sd==='yesterday') sessDate=addDays(today(),-1);
+  else {
+    pick.max=today(); pick.value=sessDate||today();
+    pick.classList.add('show');
+    try{ pick.showPicker(); }catch(_){}
+    // surligner « Autre jour » en attendant le choix
+    document.getElementById('sessdate').querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    return;
+  }
+  renderSessDate();
+});
+document.getElementById('sessdatepick').addEventListener('change',e=>{
+  let v=e.target.value; if(!v) return;
+  if(v>today()) v=today(); // pas de séance dans le futur
+  sessDate=(v===today())?null:v;
+  renderSessDate();
+});
 document.getElementById('typebtns').addEventListener('click',e=>{
   const b=e.target.closest('.typebtn'); if(!b) return;
   const before=currentStreak();
-  D.sessions.push({date:today(), type:b.dataset.type, ts:Date.now()});
+  const dt=(sessDate && sessDate<today())?sessDate:today();
+  const wasPast=dt!==today();
+  D.sessions.push({date:dt, type:b.dataset.type, ts:Date.now()});
   save();
   const after=currentStreak();
+  sessDate=null; renderSessDate(); // retour à « Aujourd'hui » après enregistrement
   render();
   if(after>before){
     const nw=UNLOCKS.find(u=>u.w===after);
     toast(nw?`${nw.e} ${nw.n} débloqué !`:'🔥 Semaine validée ! Série : '+after);
   } else {
-    toast('Séance enregistrée 💪');
+    toast(wasPast?'Séance du '+fmtDate(dt)+' enregistrée 💪':'Séance enregistrée 💪');
   }
 });
+renderSessDate();
 document.getElementById('sesslist').addEventListener('click',e=>{
   const b=e.target.closest('.del'); if(!b) return;
   D.sessions=D.sessions.filter(s=>String(s.ts)!==b.dataset.ts);

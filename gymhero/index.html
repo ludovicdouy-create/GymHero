@@ -232,6 +232,8 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
   padding:calc(env(safe-area-inset-top) + 12px) 16px 12px; color:#fff; font-weight:600;}
 .scanhead button{background:rgba(255,255,255,.14); border:none; color:#fff; font-size:16px;
   width:34px; height:34px; border-radius:50%;}
+.scanheadbtns{display:flex; gap:8px;}
+.scanhead button.on{background:var(--gold); color:#3A2A05;}
 .scanview{position:relative; flex:1; overflow:hidden; display:flex; align-items:center; justify-content:center;}
 .scanview video{width:100%; height:100%; object-fit:cover;}
 .scanframe{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
@@ -578,7 +580,8 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
 
   <!-- ================= SCANNER ================= -->
   <div class="scanmodal" id="scanmodal">
-    <div class="scanhead"><span>📷 Scanner un produit</span><button id="scanclose">✕</button></div>
+    <div class="scanhead"><span>📷 Scanner un produit</span>
+      <span class="scanheadbtns"><button id="scantorch" style="display:none">🔦</button><button id="scanclose">✕</button></span></div>
     <div class="scanview">
       <video id="scanvideo" playsinline muted></video>
       <div class="scanframe"></div>
@@ -1830,8 +1833,38 @@ document.getElementById('qval').addEventListener('input',()=>{
 
 /* ============ SCANNER CODE-BARRES ============ */
 let scanStream=null, scanLoop=null, scanZX=null, scanBusy=false;
+let scanLast={code:null,count:0,ts:0}, scanFail={}; // confirmation double lecture + cooldown des échecs
 function scanStatus(msg){ const s=document.getElementById('scanstatus'); if(s) s.textContent=msg; }
 function normCode(c){ return String(c||'').replace(/\D/g,''); }
+
+/* Clé de contrôle EAN-13 / UPC-A (12) / EAN-8 : élimine les lectures erronées */
+function validChecksum(code){
+  if(!/^\d+$/.test(code)) return false;
+  if(code.length!==8 && code.length!==12 && code.length!==13) return false;
+  let sum=0;
+  for(let i=0;i<code.length-1;i++){
+    const d=+code[code.length-2-i];        // depuis la droite (hors clé)
+    sum+=(i%2===0)?d*3:d;                   // pondération 3/1 en partant de la droite
+  }
+  return (10-(sum%10))%10 === +code[code.length-1];
+}
+
+/* Appelée à chaque détection caméra : filtre avant de lancer la recherche */
+function onScanDetect(raw){
+  const code=normCode(raw);
+  if(!code || code.length<6 || scanBusy) return;
+  const now=Date.now();
+  if(scanFail[code] && now-scanFail[code]<4000) return; // échec récent : on laisse respirer
+  if(validChecksum(code)){ handleBarcode(code); return; } // clé valide → fiable dès la 1re lecture
+  // Clé invalide (lecture douteuse ou format exotique) : exiger 2 lectures identiques rapprochées
+  if(code===scanLast.code && now-scanLast.ts<1800){
+    scanLast.count++; scanLast.ts=now;
+    if(scanLast.count>=2) handleBarcode(code);
+  }else{
+    scanLast={code,count:1,ts:now};
+    scanStatus('Code détecté… stabilise le téléphone 📷');
+  }
+}
 
 function cacheScan(code, prod){
   D.scanCache[code]={n:prod.n, k:prod.k, p:prod.p, ts:Date.now()};
@@ -1843,14 +1876,20 @@ function cacheScan(code, prod){
   save();
 }
 
-async function offLookup(code){
+async function offFetch(code,ms){
   const ctl=new AbortController();
-  const to=setTimeout(()=>ctl.abort(),8000);
+  const to=setTimeout(()=>ctl.abort(),ms);
   try{
     const r=await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=product_name,product_name_fr,brands,nutriments`,{signal:ctl.signal});
     clearTimeout(to);
-    if(!r.ok) return null;
-    const j=await r.json();
+    return r.ok ? await r.json() : null;
+  }catch(e){ clearTimeout(to); return null; }
+}
+async function offLookup(code){
+  try{
+    let j=await offFetch(code,6000);
+    if(!j) j=await offFetch(code,6000); // 2e tentative : l'API OFF est parfois lente/instable
+    if(!j) return null;
     if(j.status!==1 || !j.product) return null;
     const p=j.product, nu=p.nutriments||{};
     let k=nu['energy-kcal_100g'];
@@ -1861,7 +1900,7 @@ async function offLookup(code){
     if(p.brands) name+=' ('+p.brands.split(',')[0].trim()+')';
     if(name.length>60) name=name.slice(0,57)+'…';
     return {n:name, k:Math.round(k), p:prot};
-  }catch(e){ clearTimeout(to); return null; }
+  }catch(e){ return null; }
 }
 
 async function handleBarcode(code){
@@ -1869,13 +1908,17 @@ async function handleBarcode(code){
   if(!code || code.length<6 || scanBusy) return;
   scanBusy=true;
   if(navigator.vibrate) navigator.vibrate(60);
-  scanStatus('Code '+code+' — recherche du produit…');
-  let prod=await offLookup(code);
-  let fromCache=false;
-  if(!prod && D.scanCache[code]){ prod=D.scanCache[code]; fromCache=true; }
+  // 1) Cache local d'abord : réponse instantanée, zéro dépendance réseau
+  let prod=D.scanCache[code]||null, fromCache=!!prod;
   if(!prod){
+    scanStatus('Code '+code+' — recherche du produit…');
+    prod=await offLookup(code);
+  }
+  if(!prod){
+    scanFail[code]=Date.now(); // évite de re-tenter le même code en boucle pendant 4 s
+    scanLast={code:null,count:0,ts:0};
     scanStatus(navigator.onLine
-      ? 'Produit introuvable dans Open Food Facts 😕 Réessaie ou saisis-le à la main.'
+      ? 'Produit introuvable ou réseau lent 😕 Réessaie, ou saisis le code à la main ⬇️'
       : 'Hors ligne et produit jamais scanné — réessaie avec du réseau 📡');
     scanBusy=false;
     return;
@@ -1923,9 +1966,9 @@ async function startDetection(video){
           if(scanBusy || video.readyState<2) return;
           try{
             const codes=await det.detect(video);
-            if(codes.length) handleBarcode(codes[0].rawValue);
+            if(codes.length) onScanDetect(codes[0].rawValue);
           }catch(e){}
-        },250);
+        },200);
         return;
       }
     }catch(e){}
@@ -1938,17 +1981,32 @@ async function startDetection(video){
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
     ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
     ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E, ZXing.BarcodeFormat.CODE_128]);
-  scanZX=new ZXing.BrowserMultiFormatReader(hints, 300);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true); // analyse plus poussée de chaque image
+  scanZX=new ZXing.BrowserMultiFormatReader(hints, 250);
   scanZX.decodeFromVideoElementContinuously(video,(result)=>{
-    if(result && !scanBusy) handleBarcode(result.getText());
+    if(result && !scanBusy) onScanDetect(result.getText());
   });
+}
+
+async function setupTorch(track){
+  const btn=document.getElementById('scantorch');
+  btn.style.display='none'; btn.classList.remove('on');
+  try{
+    const caps=track.getCapabilities ? track.getCapabilities() : {};
+    if(!caps.torch) return;
+    btn.style.display='';
+    btn.onclick=async()=>{
+      const on=!btn.classList.contains('on');
+      try{ await track.applyConstraints({advanced:[{torch:on}]}); btn.classList.toggle('on',on); }catch(e){}
+    };
+  }catch(e){}
 }
 
 async function openScanner(){
   const modal=document.getElementById('scanmodal');
   modal.classList.add('show');
   document.getElementById('scancode').value='';
-  scanBusy=false;
+  scanBusy=false; scanLast={code:null,count:0,ts:0}; scanFail={};
   if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
     scanStatus('Caméra indisponible sur cet appareil — utilise la saisie manuelle ⬇️');
     return;
@@ -1956,11 +2014,19 @@ async function openScanner(){
   scanStatus('Ouverture de la caméra…');
   try{
     scanStream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'environment', width:{ideal:1280}, height:{ideal:720}}, audio:false});
+      video:{facingMode:'environment', width:{ideal:1920}, height:{ideal:1080}}, audio:false});
+    const track=scanStream.getVideoTracks()[0];
+    // Mise au point continue quand le matériel le permet (net gain de fiabilité en gros plan)
+    try{
+      const caps=track.getCapabilities ? track.getCapabilities() : {};
+      if(caps.focusMode && caps.focusMode.includes('continuous'))
+        await track.applyConstraints({advanced:[{focusMode:'continuous'}]});
+    }catch(e){}
+    await setupTorch(track);
     const video=document.getElementById('scanvideo');
     video.srcObject=scanStream;
     await video.play();
-    scanStatus('Vise le code-barres 🎯');
+    scanStatus('Vise le code-barres 🎯 (🔦 si sombre)');
     await startDetection(video);
   }catch(e){
     scanStatus(e && e.name==='NotAllowedError'

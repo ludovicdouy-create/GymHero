@@ -76,7 +76,12 @@ header.top .sub{color:var(--muted); font-size:13px;}
 .typebtn:active{transform:scale(.96); border-color:var(--teal);}
 .typebtn .e{font-size:24px;}
 .weekdots{display:flex; justify-content:space-between; margin-top:4px;}
-.wd{display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; color:var(--muted);}
+.wd{display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; color:var(--muted);
+  cursor:pointer; -webkit-tap-highlight-color:transparent;}
+.wd:active .dot{transform:scale(.9);}
+.wd.future{opacity:.4; cursor:default;}
+.wd.future:active .dot{transform:none;}
+.wd.sel .dot{box-shadow:0 0 0 2px var(--teal);}
 .wd .dot{width:26px; height:26px; border-radius:50%; background:var(--card2);
   border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:13px;}
 .wd.done .dot{background:var(--teal); border-color:var(--teal); color:#06382A; font-weight:800;}
@@ -987,10 +992,11 @@ function render(){
   const days=uniqueDaysInWeek(mon);
   document.getElementById('weeklabel').textContent='semaine du '+new Date(mon+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
   let wd='';
+  const selDay=sessDate||today(); // jour où sera enregistrée la prochaine séance
   for(let i=0;i<7;i++){
     const ds=addDays(mon,i);
-    const done=days.has(ds), isToday=ds===today();
-    wd+=`<div class="wd ${done?'done':''} ${isToday?'today':''}"><span class="dot">${done?'✓':''}</span>${FR_D[i]}</div>`;
+    const done=days.has(ds), isToday=ds===today(), future=ds>today();
+    wd+=`<div class="wd ${done?'done':''} ${isToday?'today':''} ${future?'future':''} ${(!future&&ds===selDay)?'sel':''}" data-date="${ds}" role="button" aria-label="Séance du ${FR_D[i]}"><span class="dot">${done?'✓':''}</span>${FR_D[i]}</div>`;
   }
   document.getElementById('weekdots').innerHTML=wd;
   document.getElementById('weekprog').textContent=`${days.size}/${D.goal} jours — ${days.size>=D.goal?'objectif atteint 🔥':'en cours'}`;
@@ -1062,13 +1068,13 @@ document.getElementById('sessdate').addEventListener('click',e=>{
     b.classList.add('on');
     return;
   }
-  renderSessDate();
+  renderSessDate(); render(); // synchronise la pastille « Cette semaine »
 });
 document.getElementById('sessdatepick').addEventListener('change',e=>{
   let v=e.target.value; if(!v) return;
   if(v>today()) v=today(); // pas de séance dans le futur
   sessDate=(v===today())?null:v;
-  renderSessDate();
+  renderSessDate(); render();
 });
 document.getElementById('typebtns').addEventListener('click',e=>{
   const b=e.target.closest('.typebtn'); if(!b) return;
@@ -1088,6 +1094,17 @@ document.getElementById('typebtns').addEventListener('click',e=>{
   }
 });
 renderSessDate();
+/* Clic direct sur un jour de « Cette semaine » → sélectionne la date de la séance */
+document.getElementById('weekdots').addEventListener('click',e=>{
+  const d=e.target.closest('.wd[data-date]'); if(!d) return;
+  const ds=d.dataset.date;
+  if(ds>today()){ toast('Ce jour n\u2019est pas encore arrivé 😉'); return; }
+  sessDate=(ds===today())?null:ds;
+  renderSessDate(); render();
+  toast(ds===today()?'Séance d\u2019aujourd\u2019hui — choisis le type ⬇️':'Séance du '+fmtDate(ds)+' — choisis le type ⬇️');
+  const card=document.getElementById('typebtns').closest('.card');
+  if(card) card.scrollIntoView({behavior:'smooth', block:'center'});
+});
 document.getElementById('sesslist').addEventListener('click',e=>{
   const b=e.target.closest('.del'); if(!b) return;
   D.sessions=D.sessions.filter(s=>String(s.ts)!==b.dataset.ts);

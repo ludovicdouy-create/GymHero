@@ -212,7 +212,11 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
 .qtyrow.show{display:flex;}
 .qtyrow button{background:var(--card2); border:1px solid var(--line); color:var(--text);
   border-radius:10px; width:34px; height:34px; font-size:17px; cursor:pointer; font-family:ui-rounded;}
-.qtyrow .qv{font-family:ui-rounded; font-weight:700; color:var(--text); min-width:34px; text-align:center;}
+.qtyrow .qv{font-family:ui-rounded; font-weight:700; color:var(--text); width:64px; text-align:center;
+  background:var(--card2); border:1px solid var(--line); border-radius:10px; height:34px; font-size:15px;
+  -moz-appearance:textfield; appearance:textfield;}
+.qtyrow .qv::-webkit-outer-spin-button,.qtyrow .qv::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+.qtyrow .qv:focus{outline:none; border-color:var(--teal);}
 /* --- Scanner code-barres --- */
 .btn.scan{background:var(--card2); color:var(--text); border:1px solid var(--line); font-weight:600; margin:-2px 0 12px;}
 .scanmodal{display:none; position:fixed; inset:0; z-index:60; background:#000; flex-direction:column;}
@@ -542,12 +546,12 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
       </div>
       <div class="sugbox" id="sugbox"></div>
       <div class="qtyrow" id="qtyrow">
-        <button id="qminus">−</button><span class="qv" id="qval">1</span><button id="qplus">+</button>
+        <button id="qminus">−</button><input class="qv" id="qval" type="number" inputmode="decimal" min="0" step="any"><button id="qplus">+</button>
         <span id="qunit"></span>
       </div>
       <button class="btn" id="addfood">Ajouter au journal 🍽️</button>
       <div class="favwrap" id="favwrap"></div>
-      <p class="hint">Tape un nom (« oeuf », « riz »…) ou scanne le code-barres d'un produit : kcal et protéines se remplissent automatiquement (base Open Food Facts, mémorisée hors ligne après le premier scan), ajuste la quantité avec − / +. Tes aliments sont mémorisés : la prochaine fois, un seul tap sur la pastille suffit. ✕ pour retirer un favori.</p>
+      <p class="hint">Tape un nom (« oeuf », « riz »…) ou scanne le code-barres d'un produit : kcal et protéines se remplissent automatiquement (base Open Food Facts, mémorisée hors ligne après le premier scan), ajuste la quantité avec − / + ou tape directement les grammes exacts dans le champ. Tes aliments sont mémorisés : la prochaine fois, un seul tap sur la pastille suffit. ✕ pour retirer un favori.</p>
     </div>
     <div class="card">
       <h2 id="journaltitle">Journal du jour</h2>
@@ -1576,15 +1580,38 @@ const FOODDB=[
 {n:'Vin rouge',u:'1 verre (125 ml)',k:105,p:0},
 ];
 function normTxt(s){return s.toLowerCase().replace(/œ/g,'oe').replace(/æ/g,'ae').normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
-let selFood=null, selQty=1;
-function clearFoodSel(){ selFood=null; selQty=1; const q=document.getElementById('qtyrow'); if(q) q.classList.remove('show'); }
+let selFood=null, selQty=1, selMode='x', selRef=100, selGUnit='g';
+function parseUnitAmount(u){
+  const m=String(u||'').match(/(\d+(?:[.,]\d+)?)\s*(g|ml)\b/i);
+  return m?{amt:parseFloat(m[1].replace(',','.')), unit:m[2].toLowerCase()}:null;
+}
+function clearFoodSel(){ selFood=null; selQty=1; selMode='x'; const q=document.getElementById('qtyrow'); if(q) q.classList.remove('show'); }
 function hideSugs(){ const b=document.getElementById('sugbox'); if(b){ b.classList.remove('show'); b.innerHTML=''; } }
-function fmtQty(q){ return q%1?q.toFixed(1).replace('.',','):String(q); }
+function fmtQty(q){ return q%1?String(Math.round(q*10)/10).replace('.',','):String(q); }
+function setupQty(f){
+  selFood=f;
+  const pa=parseUnitAmount(f.u);
+  if(pa){ // quantité en grammes (ou ml), précise à l'unité près
+    selMode='g'; selRef=pa.amt; selGUnit=pa.unit; selQty=pa.amt;
+    const plain=new RegExp('^\\s*\\d+(?:[.,]\\d+)?\\s*'+pa.unit+'\\s*$','i').test(f.u);
+    document.getElementById('qunit').textContent=pa.unit+(plain?'':' — '+f.u);
+  }else{ // unité à la pièce (œuf, tranche…) : multiplicateur
+    selMode='x'; selQty=1;
+    document.getElementById('qunit').textContent='× '+f.u;
+  }
+  document.getElementById('qtyrow').classList.add('show');
+  applyQty(); hideSugs();
+}
+function applyMacros(){
+  if(!selFood) return;
+  const factor=selMode==='g'?selQty/selRef:selQty;
+  document.getElementById('in-fkcal').value=Math.round(selFood.k*factor);
+  document.getElementById('in-fprot').value=Math.round(selFood.p*factor*10)/10;
+}
 function applyQty(){
   if(!selFood) return;
-  document.getElementById('qval').textContent=fmtQty(selQty);
-  document.getElementById('in-fkcal').value=Math.round(selFood.k*selQty);
-  document.getElementById('in-fprot').value=Math.round(selFood.p*selQty*10)/10;
+  document.getElementById('qval').value=String(Math.round(selQty*10)/10);
+  applyMacros();
 }
 function renderSugs(){
   const q=normTxt(document.getElementById('in-fname').value.trim());
@@ -1733,14 +1760,23 @@ document.getElementById('in-fname').addEventListener('input',()=>{ clearFoodSel(
 document.getElementById('sugbox').addEventListener('click',e=>{
   const r=e.target.closest('.sugrow'); if(!r) return;
   const f=FOODDB[parseInt(r.dataset.si,10)]; if(!f) return;
-  selFood=f; selQty=1;
   document.getElementById('in-fname').value=f.n;
-  document.getElementById('qunit').textContent='× '+f.u;
-  document.getElementById('qtyrow').classList.add('show');
-  applyQty(); hideSugs();
+  setupQty(f);
 });
-document.getElementById('qminus').addEventListener('click',()=>{ if(selQty>0.5){ selQty=Math.round((selQty-0.5)*10)/10; applyQty(); } });
-document.getElementById('qplus').addEventListener('click',()=>{ selQty=Math.round((selQty+0.5)*10)/10; applyQty(); });
+document.getElementById('qminus').addEventListener('click',()=>{
+  if(selMode==='g'){ if(selQty>1){ selQty=Math.max(1,Math.round(selQty-10)); applyQty(); } }
+  else if(selQty>0.5){ selQty=Math.round((selQty-0.5)*10)/10; applyQty(); }
+});
+document.getElementById('qplus').addEventListener('click',()=>{
+  if(selMode==='g'){ selQty=Math.round(selQty+10); applyQty(); }
+  else { selQty=Math.round((selQty+0.5)*10)/10; applyQty(); }
+});
+document.getElementById('qval').addEventListener('input',()=>{
+  if(!selFood) return;
+  const v=parseFloat(document.getElementById('qval').value);
+  if(!(v>0)) return;
+  selQty=v; applyMacros(); // pas de réécriture du champ pendant la frappe
+});
 ['in-fkcal','in-fprot'].forEach(id=>document.getElementById(id).addEventListener('input',clearFoodSel));
 
 /* ============ SCANNER CODE-BARRES ============ */
@@ -1798,12 +1834,8 @@ async function handleBarcode(code){
   if(!fromCache) cacheScan(code, prod);
   closeScanner();
   // Préremplir la ligne aliment : valeurs pour 100 g, quantité ajustable
-  selFood={n:prod.n, k:prod.k, p:prod.p, u:'100 g'};
-  selQty=1;
   document.getElementById('in-fname').value=prod.n;
-  document.getElementById('qunit').textContent='× 100 g';
-  document.getElementById('qtyrow').classList.add('show');
-  applyQty(); hideSugs();
+  setupQty({n:prod.n, k:prod.k, p:prod.p, u:'100 g'});
   toast(fromCache?'Produit retrouvé hors ligne 📦':'Produit trouvé ✅ Ajuste la quantité');
 }
 
@@ -1905,7 +1937,10 @@ document.getElementById('addfood').addEventListener('click',()=>{
   const kcal=parseFloat(document.getElementById('in-fkcal').value);
   const prot=parseFloat(document.getElementById('in-fprot').value)||0;
   if(!name || !(kcal>0)){ toast('Nom + kcal, au minimum 🙂'); return; }
-  if(selFood && selQty!==1) name+=' ×'+fmtQty(selQty);
+  if(selFood){
+    if(selMode==='g'){ if(selQty!==selRef) name+=' – '+fmtQty(selQty)+'\u00A0'+selGUnit; }
+    else if(selQty!==1) name+=' ×'+fmtQty(selQty);
+  }
   addMeal(name, Math.round(kcal), prot);
   clearFoodSel(); hideSugs();
   document.getElementById('in-fname').value='';

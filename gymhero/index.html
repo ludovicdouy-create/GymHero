@@ -20,12 +20,40 @@
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{margin:0; padding:0; background:var(--bg); color:var(--text);
   font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  overscroll-behavior:none;}
+  overscroll-behavior:none; overflow-x:hidden;}
 h1,h2,h3,.display{font-family:'SF Pro Rounded', ui-rounded, -apple-system, sans-serif;}
-#app{max-width:520px; margin:0 auto; padding:calc(env(safe-area-inset-top) + 14px) 16px 110px;}
+#app{max-width:520px; margin:0 auto; padding:calc(env(safe-area-inset-top) + 14px) 16px 110px;
+  position:relative; perspective:1400px;}
 .screen{display:none;}
 .screen.active{display:block; animation:fadein .25s ease;}
 @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+/* --- Transition "page de cahier" entre onglets --- */
+.screen.page-out,.screen.page-under{display:block; position:absolute;
+  top:calc(env(safe-area-inset-top) + 14px); left:16px; right:16px; pointer-events:none;}
+.screen.page-out{z-index:3; transform-origin:left center; backface-visibility:hidden;
+  animation:pageOut .32s cubic-bezier(.55,0,.85,.4) forwards;}
+.screen.active.page-reveal{animation:pageReveal .32s ease-out;}
+.screen.active.page-in{position:relative; z-index:3; transform-origin:left center;
+  backface-visibility:hidden; animation:pageIn .34s cubic-bezier(.15,.6,.3,1);}
+.screen.page-under{z-index:1; animation:pageUnder .32s ease forwards;}
+@keyframes pageOut{
+  from{transform:rotateY(0deg); opacity:1; filter:brightness(1);}
+  55%{opacity:1;}
+  to{transform:rotateY(-88deg); opacity:0; filter:brightness(1.18);}}
+@keyframes pageReveal{
+  from{transform:translateX(12px) scale(.985); opacity:.35;}
+  to{transform:none; opacity:1;}}
+@keyframes pageIn{
+  from{transform:rotateY(-88deg); opacity:0; filter:brightness(1.18);}
+  45%{opacity:1;}
+  to{transform:rotateY(0deg); opacity:1; filter:brightness(1);}}
+@keyframes pageUnder{
+  from{opacity:.85; transform:translateX(8px) scale(.99);}
+  to{opacity:0; transform:none;}}
+@media (prefers-reduced-motion: reduce){
+  .screen.page-out,.screen.page-under{display:none; animation:none;}
+  .screen.active.page-reveal,.screen.active.page-in{animation:fadein .25s ease; position:static;}
+}
 header.top{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px;}
 header.top h1{font-size:24px; margin:0; letter-spacing:.3px;}
 header.top .sub{color:var(--muted); font-size:13px;}
@@ -2189,14 +2217,48 @@ function nextSpeech(){
 document.getElementById('bubble').addEventListener('click',nextSpeech);
 document.getElementById('avatarbox').addEventListener('click',nextSpeech);
 
-/* ============ NAVIGATION ============ */
-document.querySelectorAll('nav button').forEach(b=>{
+/* ============ NAVIGATION (transition page de cahier) ============ */
+const NAV_BTNS=[...document.querySelectorAll('nav button')];
+const PAGE_ANIM_CLASSES=['page-out','page-reveal','page-in','page-under'];
+let pageAnimTimer=null;
+function clearPageAnim(){
+  if(pageAnimTimer){ clearTimeout(pageAnimTimer); pageAnimTimer=null; }
+  document.querySelectorAll('.screen').forEach(s=>{
+    PAGE_ANIM_CLASSES.forEach(c=>s.classList.remove(c));
+  });
+}
+function onPageAnimEnd(e){
+  if(e.animationName==='pageOut'||e.animationName==='pageIn'||e.animationName==='pageReveal'){
+    clearPageAnim();
+  }
+}
+document.querySelectorAll('.screen').forEach(s=>s.addEventListener('animationend',onPageAnimEnd));
+const REDUCED_MOTION=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+NAV_BTNS.forEach((b,idx)=>{
   b.addEventListener('click',()=>{
-    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
-    document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+    const next=document.getElementById('scr-'+b.dataset.scr);
+    const cur=document.querySelector('.screen.active');
+    if(cur===next) return;
+    clearPageAnim();                              // coupe une éventuelle animation en cours (taps rapides)
+    const curIdx=NAV_BTNS.findIndex(x=>x.classList.contains('active'));
+    const forward=idx>curIdx;
+    NAV_BTNS.forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
-    document.getElementById('scr-'+b.dataset.scr).classList.add('active');
+    if(cur) cur.classList.remove('active');
+    next.classList.add('active');
     window.scrollTo(0,0);
+    if(cur&&!REDUCED_MOTION){
+      if(forward){
+        // La page actuelle se tourne vers la gauche, la suivante est révélée dessous
+        cur.classList.add('page-out');
+        next.classList.add('page-reveal');
+      }else{
+        // On revient en arrière : la page précédente se rabat par-dessus
+        cur.classList.add('page-under');
+        next.classList.add('page-in');
+      }
+      pageAnimTimer=setTimeout(clearPageAnim,500); // filet de sécurité si animationend ne part pas
+    }
   });
 });
 

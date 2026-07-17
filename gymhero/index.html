@@ -29,6 +29,25 @@ h1,h2,h3,.display{font-family:'SF Pro Rounded', ui-rounded, -apple-system, sans-
 @media (prefers-reduced-motion: reduce){
   .screen.active{animation:none;}
 }
+/* --- Écran d'accueil --- */
+#splash{position:fixed; inset:0; z-index:2000; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:6px; padding:24px; text-align:center;
+  background:radial-gradient(120% 85% at 50% 32%, #182337 0%, var(--bg) 72%);
+  transition:opacity .5s ease;}
+#splash.hide{opacity:0; pointer-events:none;}
+.splash-avatar{width:min(60vw, 235px); height:auto; margin-bottom:4px;}
+.splash-title{font-size:40px; margin:0; letter-spacing:1px;
+  background:linear-gradient(180deg, var(--text) 30%, var(--gold) 120%);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;}
+.splash-sub{color:var(--gold); font-size:16px; font-weight:600; margin:2px 0 0;}
+.splash-hint{color:var(--muted); font-size:13px; margin:26px 0 0;
+  animation:splashPulse 1.7s ease-in-out infinite;}
+@keyframes splashPulse{0%,100%{opacity:.4;} 50%{opacity:1;}}
+@media (prefers-reduced-motion: reduce){
+  .splash-hint{animation:none; opacity:.8;}
+  #splash{transition:none;}
+}
 header.top{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:14px;}
 header.top h1{font-size:24px; margin:0; letter-spacing:.3px;}
 header.top .sub{color:var(--muted); font-size:13px;}
@@ -336,6 +355,53 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
 </style>
 </head>
 <body>
+
+<!-- ================= ÉCRAN D'ACCUEIL ================= -->
+<div id="splash" role="button" aria-label="Touchez pour commencer">
+  <svg class="splash-avatar" viewBox="0 0 220 240" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <!-- halo -->
+    <defs>
+      <radialGradient id="splash-glow" cx="50%" cy="45%" r="60%">
+        <stop offset="0%" stop-color="#3BD6A0" stop-opacity=".22"/>
+        <stop offset="100%" stop-color="#3BD6A0" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <circle cx="110" cy="115" r="105" fill="url(#splash-glow)"/>
+    <!-- ombre au sol -->
+    <ellipse cx="110" cy="212" rx="46" ry="7" fill="#000" opacity=".35">
+      <animate attributeName="rx" values="46;54;54;46" keyTimes="0;.4;.55;1" dur="1.5s" repeatCount="indefinite"/>
+    </ellipse>
+    <!-- jambes (plient pendant le squat, pieds fixes) -->
+    <path d="M101 140 L95 172 L98 205" fill="none" stroke="#3BD6A0" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+      <animate attributeName="d" dur="1.5s" repeatCount="indefinite" keyTimes="0;.4;.55;1"
+        values="M101 140 L95 172 L98 205; M101 156 L79 178 L98 205; M101 156 L79 178 L98 205; M101 140 L95 172 L98 205"/>
+    </path>
+    <path d="M119 140 L125 172 L122 205" fill="none" stroke="#3BD6A0" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+      <animate attributeName="d" dur="1.5s" repeatCount="indefinite" keyTimes="0;.4;.55;1"
+        values="M119 140 L125 172 L122 205; M119 156 L141 178 L122 205; M119 156 L141 178 L122 205; M119 140 L125 172 L122 205"/>
+    </path>
+    <!-- haut du corps + barre : descend et remonte, synchronisé avec les jambes -->
+    <g>
+      <animateTransform attributeName="transform" type="translate" dur="1.5s" repeatCount="indefinite"
+        keyTimes="0;.4;.55;1" values="0 0; 0 16; 0 16; 0 0"/>
+      <!-- barre -->
+      <line x1="38" y1="79" x2="182" y2="79" stroke="#F5B63F" stroke-width="6" stroke-linecap="round"/>
+      <rect x="28" y="66" width="12" height="26" rx="4" fill="#F5B63F"/>
+      <rect x="180" y="66" width="12" height="26" rx="4" fill="#F5B63F"/>
+      <!-- bras tenant la barre -->
+      <path d="M110 100 L76 79" fill="none" stroke="#3BD6A0" stroke-width="10" stroke-linecap="round"/>
+      <path d="M110 100 L144 79" fill="none" stroke="#3BD6A0" stroke-width="10" stroke-linecap="round"/>
+      <!-- torse -->
+      <line x1="110" y1="98" x2="110" y2="142" stroke="#3BD6A0" stroke-width="14" stroke-linecap="round"/>
+      <!-- tête -->
+      <circle cx="110" cy="58" r="19" fill="#3BD6A0"/>
+    </g>
+  </svg>
+  <h1 class="splash-title">GymHero</h1>
+  <p class="splash-sub">Commencez votre transformation</p>
+  <p class="splash-hint">👆 Touchez l'écran pour continuer</p>
+</div>
+
 <div id="app">
 
   <div id="installhint" style="display:none">
@@ -2191,6 +2257,20 @@ function nextSpeech(){
 }
 document.getElementById('bubble').addEventListener('click',nextSpeech);
 document.getElementById('avatarbox').addEventListener('click',nextSpeech);
+
+/* ============ ÉCRAN D'ACCUEIL ============ */
+const splash=document.getElementById('splash');
+function hideSplash(){
+  if(!splash||splash.classList.contains('hide')) return;
+  splash.classList.add('hide');
+  const remove=()=>{ splash.style.display='none'; };
+  splash.addEventListener('transitionend',remove,{once:true});
+  setTimeout(remove,700); // filet de sécurité (reduced-motion : pas de transition)
+}
+if(splash){
+  splash.addEventListener('click',hideSplash);
+  window.addEventListener('keydown',hideSplash);
+}
 
 /* ============ NAVIGATION (fondu doux, géré en CSS) ============ */
 document.querySelectorAll('nav button').forEach(b=>{

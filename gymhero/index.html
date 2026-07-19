@@ -251,6 +251,45 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
   -moz-appearance:textfield; appearance:textfield;}
 .qtyrow .qv::-webkit-outer-spin-button,.qtyrow .qv::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
 .qtyrow .qv:focus{outline:none; border-color:var(--teal);}
+/* --- Programmes nutrition --- */
+.progentry{display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+  background:var(--card2); border:1px solid var(--line); color:var(--text);
+  border-radius:12px; padding:12px 14px; cursor:pointer; font-family:inherit;}
+.progentry:active{transform:scale(.99);}
+.progentry .pe-ico{font-size:18px;}
+.progentry .pe-txt{display:flex; flex-direction:column; gap:2px; min-width:0;}
+.progentry .pe-name{font-family:ui-rounded; font-weight:700; font-size:14px;}
+.progentry .pe-meta{color:var(--muted); font-size:11px;}
+.progentry .pe-chev{margin-left:auto; color:var(--muted); font-size:20px; font-family:ui-rounded;
+  transition:transform .2s ease;}
+.progentry.open{border-color:var(--teal);}
+.progentry.open .pe-chev{transform:rotate(90deg); color:var(--teal);}
+.progbody{display:none; margin-top:12px;}
+.progbody.show{display:block;}
+.progweek{font-family:ui-rounded; font-weight:700; font-size:13px; color:var(--gold);
+  margin:0 0 8px; letter-spacing:.3px;}
+.progbf{background:var(--card2); border:1px solid var(--line); border-radius:12px;
+  padding:11px 12px; font-size:13px; line-height:1.45; margin-bottom:10px;}
+.progbf b{display:block; color:var(--gold); font-family:ui-rounded; font-size:12.5px; margin-bottom:3px;}
+.progbf span{color:var(--muted);}
+.progday{border:1px solid var(--line); border-radius:12px; margin-bottom:8px; overflow:hidden;}
+.progday .pd-head{display:flex; justify-content:space-between; align-items:baseline; gap:8px;
+  padding:11px 12px; background:var(--card2); cursor:pointer;
+  font-family:ui-rounded; font-weight:700; font-size:14px;}
+.progday .pd-head:active{background:var(--line);}
+.pd-head .pd-note{color:var(--muted); font-size:11px; font-weight:600; flex:1; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis;}
+.pd-head .pd-k{color:var(--teal); font-size:12px; font-weight:700; white-space:nowrap;}
+.pd-meals{display:none; padding:2px 12px 8px; background:var(--card);}
+.progday.open .pd-meals{display:block;}
+.progday.open .pd-head{border-bottom:1px solid var(--line);}
+.pmeal{display:flex; align-items:baseline; gap:8px; padding:9px 0; border-bottom:1px solid var(--line);
+  font-size:13px; line-height:1.4;}
+.pmeal:last-child{border-bottom:none;}
+.pmeal .pm-t{color:var(--gold); font-family:ui-rounded; font-weight:700; font-size:12px;
+  min-width:66px; flex-shrink:0;}
+.pmeal .pm-d{flex:1;}
+.pmeal .pm-k{color:var(--teal); font-family:ui-rounded; font-size:12px; white-space:nowrap;}
 /* --- Scanner code-barres --- */
 .btn.scan{background:var(--card2); color:var(--text); border:1px solid var(--line); font-weight:600; margin:-2px 0 12px;}
 .scanmodal{display:none; position:fixed; inset:0; z-index:60; background:#000; flex-direction:column;}
@@ -649,6 +688,18 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
     <div class="card">
       <h2>7 derniers jours</h2>
       <div class="chartbox" id="nutrichart"></div>
+    </div>
+    <div class="card">
+      <h2>📋 Programmes</h2>
+      <button class="progentry" id="prog-dorothee" aria-expanded="false">
+        <span class="pe-ico">🍽️</span>
+        <span class="pe-txt">
+          <span class="pe-name">Programme Dorothée</span>
+          <span class="pe-meta">Semaine 1 · ~1850 kcal / jour</span>
+        </span>
+        <span class="pe-chev">›</span>
+      </button>
+      <div class="progbody" id="progbody-dorothee"></div>
     </div>
   </section>
 
@@ -1916,6 +1967,90 @@ document.getElementById('qval').addEventListener('input',()=>{
   selQty=v; applyMacros(); // pas de réécriture du champ pendant la frappe
 });
 ['in-fkcal','in-fprot'].forEach(id=>document.getElementById(id).addEventListener('input',clearFoodSel));
+
+/* ============ PROGRAMMES NUTRITION ============ */
+const PROG_DOROTHEE = {
+  name:'Programme Dorothée',
+  weeks:[{
+    n:1,
+    breakfast:{
+      title:'Petit-déjeuner type (~380 kcal, tous les jours)',
+      desc:'2 tranches de pain de mie complet avec fromage fouetté à tartiner ou 2 carrés de chocolat noir 72 %, 1 fromage blanc nature, café ou thé (+ un nuage de lait).'
+    },
+    days:[
+      {d:'Lundi', kcal:1850, meals:[
+        {m:'Midi', txt:'2 wraps (galettes de blé, émincés de poulet, sucrine, tomates cerises, un trait de sauce andalouse) + 1 fromage blanc 0 % aux fruits', k:640},
+        {m:'Soir', txt:'2 saucisses Francfort + lentilles (1 boîte 130 g) + carottes râpées à la ciboulette', k:610},
+        {m:'Collation', txt:'1 compote + 2 carrés de chocolat noir', k:180}
+      ]},
+      {d:'Mardi', kcal:1830, meals:[
+        {m:'Midi', txt:'Piémontaise jambon (1 barquette) + salade sucrine-feta-tomates cerises', k:600},
+        {m:'Soir', txt:'Filet de poulet rôti (2 tranches) + grenaille rôtie au four (200 g, filet d\u2019huile, ciboulette) + salade', k:580},
+        {m:'Collation', txt:'Île flottante + 1 compote', k:230}
+      ]},
+      {d:'Mercredi', kcal:1860, meals:[
+        {m:'Midi', txt:'Taboulé poulet (300 g) + carottes râpées', k:600},
+        {m:'Soir', txt:'Omelette 2 œufs au chèvre et ciboulette + 1 tranche de pain de mie + salade', k:560},
+        {m:'Collation', txt:'Crème dessert vanille + 1 fruit ou compote', k:230}
+      ]},
+      {d:'Jeudi', kcal:1840, meals:[
+        {m:'Midi', txt:'Wrap bacon-chèvre-sucrine (1 galette) + macédoine de légumes (1 boîte) + fromage blanc', k:620},
+        {m:'Soir', txt:'Saucisse fumée (\u2153 du paquet, ~120 g) + lentilles + légumes verts', k:640},
+        {m:'Collation', txt:'1 compote', k:130}
+      ]},
+      {d:'Vendredi', kcal:1850, meals:[
+        {m:'Midi', txt:'2e taboulé poulet + feta émiettée + tomates cerises', k:650},
+        {m:'Soir', txt:'Poêlée grenaille restante + émincés de poulet + salade + fromage blanc', k:570},
+        {m:'Collation', txt:'Crème dessert chocolat', k:180}
+      ]},
+      {d:'Samedi', kcal:1870, note:'jour plaisir maîtrisé', meals:[
+        {m:'Apéro', txt:'Chips (une petite poignée, ~30 g) + 4-5 tranches de saucisse sèche', k:260},
+        {m:'Midi', txt:'Croque au pain de mie (bacon + fromage de chèvre) + grande salade', k:600},
+        {m:'Soir', txt:'2e piémontaise + carottes râpées', k:500},
+        {m:'Collation', txt:'Île flottante', k:110}
+      ]},
+      {d:'Dimanche', kcal:1830, meals:[
+        {m:'Midi', txt:'Reste de poulet rôti + riz ou pâtes (portion cuite ~150 g) + légumes verts', k:650},
+        {m:'Soir', txt:'2 tartines chèvre-tomates cerises passées au four + salade + fromage blanc', k:520},
+        {m:'Collation', txt:'Compote + 2 carrés de chocolat noir', k:180}
+      ]}
+    ]
+  }]
+};
+function escHTML(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function renderProgDorothee(){
+  const box=document.getElementById('progbody-dorothee'); if(!box) return;
+  let html='';
+  PROG_DOROTHEE.weeks.forEach(w=>{
+    html+=`<p class="progweek">Semaine ${w.n}</p>`;
+    html+=`<div class="progbf"><b>☕ ${escHTML(w.breakfast.title)}</b><span>${escHTML(w.breakfast.desc)}</span></div>`;
+    w.days.forEach((day,i)=>{
+      html+=`<div class="progday" data-pd="${w.n}-${i}">
+        <div class="pd-head">
+          <span>${day.d}</span>
+          ${day.note?`<span class="pd-note">${escHTML(day.note)}</span>`:'<span class="pd-note"></span>'}
+          <span class="pd-k">~${day.kcal} kcal</span>
+        </div>
+        <div class="pd-meals">${day.meals.map(mm=>
+          `<div class="pmeal"><span class="pm-t">${mm.m}</span><span class="pm-d">${escHTML(mm.txt)}</span><span class="pm-k">~${mm.k}</span></div>`
+        ).join('')}</div>
+      </div>`;
+    });
+  });
+  box.innerHTML=html;
+}
+renderProgDorothee();
+document.getElementById('prog-dorothee').addEventListener('click',()=>{
+  const btn=document.getElementById('prog-dorothee');
+  const body=document.getElementById('progbody-dorothee');
+  const open=body.classList.toggle('show');
+  btn.classList.toggle('open',open);
+  btn.setAttribute('aria-expanded',open?'true':'false');
+});
+document.getElementById('progbody-dorothee').addEventListener('click',e=>{
+  const head=e.target.closest('.pd-head'); if(!head) return;
+  head.parentElement.classList.toggle('open');
+});
 
 /* ============ SCANNER CODE-BARRES ============ */
 let scanStream=null, scanLoop=null, scanZX=null, scanBusy=false;

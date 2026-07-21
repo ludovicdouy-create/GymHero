@@ -2369,38 +2369,52 @@ async function startDetection(video){
   hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
   const reader=new ZXing.MultiFormatReader();
   reader.setHints(hints);
-  const cap=document.createElement('canvas'), capCtx=cap.getContext('2d');
-  const rc=document.createElement('canvas'), rcCtx=rc.getContext('2d');
-  let useRot=false;
-  function tryDecode(canvas){
+  const cap=document.createElement('canvas'), capCtx=cap.getContext('2d',{willReadFrequently:true});
+  let useRot=false, frameN=0, decodeErr=0;
+
+  // Construit une source de luminance ZXing directement depuis les pixels RGBA :
+  // plus fiable sur iOS Safari que HTMLCanvasElementLuminanceSource.
+  function decodePixels(imgData, w, h){
+    const d=imgData.data, lum=new Uint8ClampedArray(w*h);
+    for(let i=0,j=0;j<lum.length;i+=4,j++)
+      lum[j]=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)|0;
     try{
-      const src=new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+      const src=new ZXing.RGBLuminanceSource(lum,w,h);
       const bmp=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
       const res=reader.decode(bmp);
-      return res ? res.getText() : null;
-    }catch(e){ return null; } // NotFoundException à chaque frame sans code : normal
+      return res?res.getText():null;
+    }catch(e){ decodeErr++; return null; }
     finally{ try{ reader.reset(); }catch(e){} }
   }
+
   scanLoop=setInterval(()=>{
     if(scanBusy || video.readyState<2 || !video.videoWidth) return;
-    const w=video.videoWidth, h=video.videoHeight;
+    frameN++;
+    const vw=video.videoWidth, vh=video.videoHeight;
+    // On recadre une bande centrale large (là où vise l'utilisateur) : moins de
+    // pixels = décodage plus rapide et code-barres plus net pour ZXing.
+    const cw=Math.min(vw, Math.round(vw*0.9));
+    const ch=Math.min(vh, Math.round(vh*0.5));
+    const sx=(vw-cw)>>1, sy=(vh-ch)>>1;
     useRot=!useRot;
     let hit=null;
     if(!useRot){
-      cap.width=w; cap.height=h;
-      capCtx.drawImage(video,0,0,w,h);
-      hit=tryDecode(cap);
+      cap.width=cw; cap.height=ch;
+      capCtx.drawImage(video, sx,sy,cw,ch, 0,0,cw,ch);
+      hit=decodePixels(capCtx.getImageData(0,0,cw,ch), cw, ch);
     }else{
-      rc.width=h; rc.height=w;              // dimensions inversées = rotation 90°
-      rcCtx.save();
-      rcCtx.translate(h/2,w/2);
-      rcCtx.rotate(Math.PI/2);
-      rcCtx.drawImage(video,-w/2,-h/2,w,h);
-      rcCtx.restore();
-      hit=tryDecode(rc);
+      // même bande, tournée 90° : lit les codes tenus à l'horizontale
+      cap.width=ch; cap.height=cw;
+      capCtx.save();
+      capCtx.translate(ch/2,cw/2);
+      capCtx.rotate(Math.PI/2);
+      capCtx.drawImage(video, sx,sy,cw,ch, -cw/2,-ch/2,cw,ch);
+      capCtx.restore();
+      hit=decodePixels(capCtx.getImageData(0,0,ch,cw), ch, cw);
     }
-    if(hit) onScanDetect(hit);
-  },180);
+    if(hit){ onScanDetect(hit); }
+    else if(frameN%15===0){ scanStatus('Analyse en cours… '+frameN+' images 📷 (approche le code, bon éclairage)'); }
+  },140);
 }
 
 async function setupTorch(track){

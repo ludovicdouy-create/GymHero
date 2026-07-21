@@ -251,6 +251,7 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
   -moz-appearance:textfield; appearance:textfield;}
 .qtyrow .qv::-webkit-outer-spin-button,.qtyrow .qv::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
 .qtyrow .qv:focus{outline:none; border-color:var(--teal);}
+.qtyrow .qreset{margin-left:auto; width:auto; padding:0 12px; font-size:12px; white-space:nowrap; color:var(--muted);}
 /* --- Programmes nutrition --- */
 .progentry{display:flex; align-items:center; gap:10px; width:100%; text-align:left;
   background:var(--card2); border:1px solid var(--line); color:var(--text);
@@ -306,8 +307,10 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
 .scanview{position:relative; flex:1; overflow:hidden; display:flex; align-items:center; justify-content:center;}
 .scanview video{width:100%; height:100%; object-fit:cover;}
 .scanframe{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-  width:min(78%,320px); height:150px; border:2.5px solid var(--gold); border-radius:16px;
+  width:min(92%,440px); height:132px; border:2.5px solid var(--gold); border-radius:16px;
   box-shadow:0 0 0 2000px rgba(0,0,0,.35); pointer-events:none;}
+.scanhint{position:absolute; left:50%; bottom:calc(50% + 84px); transform:translateX(-50%);
+  color:#fff; font-size:12px; opacity:.8; text-align:center; pointer-events:none; white-space:nowrap;}
 .scanstatus{margin:0; padding:12px 16px; color:#fff; font-size:13px; text-align:center; min-height:20px;}
 .scanmanual{display:flex; gap:8px; padding:0 16px calc(env(safe-area-inset-bottom) + 16px);}
 .scanmanual input{flex:1; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.25);
@@ -679,6 +682,7 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
       <div class="qtyrow" id="qtyrow">
         <button id="qminus">−</button><input class="qv" id="qval" type="number" inputmode="decimal" min="0" step="any"><button id="qplus">+</button>
         <span id="qunit"></span>
+        <button id="qreset" class="qreset" title="Changer d'aliment">✕ changer</button>
       </div>
       <button class="btn" id="addfood">Ajouter au journal 🍽️</button>
       <div class="favwrap" id="favwrap"></div>
@@ -713,6 +717,7 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
     <div class="scanview">
       <video id="scanvideo" playsinline muted></video>
       <div class="scanframe"></div>
+      <div class="scanhint">Tiens le code-barres à l'horizontale dans le cadre</div>
     </div>
     <p class="scanstatus" id="scanstatus"></p>
     <div class="scanmanual">
@@ -1778,6 +1783,11 @@ function parseUnitAmount(u){
   return m?{amt:parseFloat(m[1].replace(',','.')), unit:m[2].toLowerCase()}:null;
 }
 function clearFoodSel(){ selFood=null; selQty=1; selMode='x'; const q=document.getElementById('qtyrow'); if(q) q.classList.remove('show'); }
+function resetFoodEntry(){
+  clearFoodSel(); hideSugs();
+  ['in-fname','in-fkcal','in-fprot'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const n=document.getElementById('in-fname'); if(n) n.focus();
+}
 function hideSugs(){ const b=document.getElementById('sugbox'); if(b){ b.classList.remove('show'); b.innerHTML=''; } }
 function fmtQty(q){ return q%1?String(Math.round(q*10)/10).replace('.',','):String(q); }
 function setupQty(f){
@@ -1969,6 +1979,7 @@ document.getElementById('qval').addEventListener('input',()=>{
   if(!(v>0)) return;
   selQty=v; applyMacros(); // pas de réécriture du champ pendant la frappe
 });
+document.getElementById('qreset').addEventListener('click',resetFoodEntry);
 ['in-fkcal','in-fprot'].forEach(id=>document.getElementById(id).addEventListener('input',clearFoodSel));
 
 /* ============ PROGRAMMES NUTRITION ============ */
@@ -2303,8 +2314,25 @@ function loadZXing(){
   });
 }
 
+let scanCanvas=null, scanCtx=null;
+function rotatedFrame(video){
+  // Renvoie un canvas contenant l'image vidéo tournée de 90° : un code-barres
+  // tenu à l'horizontale y devient vertical (et inversement), ce qui permet
+  // au détecteur de le lire dans les deux orientations sans tourner le téléphone.
+  const w=video.videoWidth, h=video.videoHeight;
+  if(!w || !h) return null;
+  if(!scanCanvas){ scanCanvas=document.createElement('canvas'); scanCtx=scanCanvas.getContext('2d'); }
+  scanCanvas.width=h; scanCanvas.height=w;
+  scanCtx.save();
+  scanCtx.translate(h/2, w/2);
+  scanCtx.rotate(Math.PI/2);
+  scanCtx.drawImage(video, -w/2, -h/2, w, h);
+  scanCtx.restore();
+  return scanCanvas;
+}
+
 async function startDetection(video){
-  const FORMATS=['ean_13','ean_8','upc_a','upc_e','code_128'];
+  const FORMATS=['ean_13','ean_8','upc_a','upc_e','code_128','code_39','itf'];
   // 1) API native (Chrome / Android)
   if('BarcodeDetector' in window){
     try{
@@ -2312,13 +2340,17 @@ async function startDetection(video){
       const fmts=FORMATS.filter(f=>supported.includes(f));
       if(fmts.length){
         const det=new window.BarcodeDetector({formats:fmts});
+        let rot=false; // on alterne image normale / image tournée à chaque tick
         scanLoop=setInterval(async()=>{
           if(scanBusy || video.readyState<2) return;
           try{
-            const codes=await det.detect(video);
+            let target=video;
+            rot=!rot;
+            if(rot){ const c=rotatedFrame(video); if(c) target=c; }
+            const codes=await det.detect(target);
             if(codes.length) onScanDetect(codes[0].rawValue);
           }catch(e){}
-        },200);
+        },160);
         return;
       }
     }catch(e){}

@@ -715,7 +715,7 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
     <div class="scanhead"><span>📷 Scanner un produit</span>
       <span class="scanheadbtns"><button id="scantorch" style="display:none">🔦</button><button id="scanclose">✕</button></span></div>
     <div class="scanview">
-      <video id="scanvideo" playsinline muted></video>
+      <video id="scanvideo" playsinline webkit-playsinline muted autoplay></video>
       <div class="scanframe"></div>
       <div class="scanhint">Tiens le code-barres à l'horizontale dans le cadre</div>
     </div>
@@ -2355,19 +2355,52 @@ async function startDetection(video){
       }
     }catch(e){}
   }
-  // 2) Fallback ZXing (Safari iOS notamment)
+  // 2) Fallback ZXing (Safari iOS notamment) — on pilote nous-mêmes la capture
+  //    pour (a) fiabiliser la détection sur iOS et (b) décoder aussi l'image
+  //    tournée à 90°, afin de lire les codes tenus à l'horizontale.
   scanStatus('Chargement du module de scan…');
   await loadZXing();
   scanStatus('Vise le code-barres 🎯');
   const hints=new Map();
   hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[
     ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-    ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E, ZXing.BarcodeFormat.CODE_128]);
-  hints.set(ZXing.DecodeHintType.TRY_HARDER, true); // analyse plus poussée de chaque image
-  scanZX=new ZXing.BrowserMultiFormatReader(hints, 250);
-  scanZX.decodeFromVideoElementContinuously(video,(result)=>{
-    if(result && !scanBusy) onScanDetect(result.getText());
-  });
+    ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.UPC_E,
+    ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.ITF]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+  const reader=new ZXing.MultiFormatReader();
+  reader.setHints(hints);
+  const cap=document.createElement('canvas'), capCtx=cap.getContext('2d');
+  const rc=document.createElement('canvas'), rcCtx=rc.getContext('2d');
+  let useRot=false;
+  function tryDecode(canvas){
+    try{
+      const src=new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+      const bmp=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+      const res=reader.decode(bmp);
+      return res ? res.getText() : null;
+    }catch(e){ return null; } // NotFoundException à chaque frame sans code : normal
+    finally{ try{ reader.reset(); }catch(e){} }
+  }
+  scanLoop=setInterval(()=>{
+    if(scanBusy || video.readyState<2 || !video.videoWidth) return;
+    const w=video.videoWidth, h=video.videoHeight;
+    useRot=!useRot;
+    let hit=null;
+    if(!useRot){
+      cap.width=w; cap.height=h;
+      capCtx.drawImage(video,0,0,w,h);
+      hit=tryDecode(cap);
+    }else{
+      rc.width=h; rc.height=w;              // dimensions inversées = rotation 90°
+      rcCtx.save();
+      rcCtx.translate(h/2,w/2);
+      rcCtx.rotate(Math.PI/2);
+      rcCtx.drawImage(video,-w/2,-h/2,w,h);
+      rcCtx.restore();
+      hit=tryDecode(rc);
+    }
+    if(hit) onScanDetect(hit);
+  },180);
 }
 
 async function setupTorch(track){
@@ -2395,8 +2428,14 @@ async function openScanner(){
   }
   scanStatus('Ouverture de la caméra…');
   try{
-    scanStream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'environment', width:{ideal:1920}, height:{ideal:1080}}, audio:false});
+    try{
+      scanStream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}}, audio:false});
+    }catch(err){
+      // Certains iPhones refusent les contraintes de résolution : on retente au minimum
+      scanStream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{ideal:'environment'}}, audio:false});
+    }
     const track=scanStream.getVideoTracks()[0];
     // Mise au point continue quand le matériel le permet (net gain de fiabilité en gros plan)
     try{
@@ -2407,7 +2446,15 @@ async function openScanner(){
     await setupTorch(track);
     const video=document.getElementById('scanvideo');
     video.srcObject=scanStream;
-    await video.play();
+    // iOS : attendre que les dimensions vidéo soient disponibles avant de décoder
+    if(video.readyState<1){
+      await new Promise(res=>{
+        const done=()=>{ video.removeEventListener('loadedmetadata',done); res(); };
+        video.addEventListener('loadedmetadata',done);
+        setTimeout(res,1500); // filet de sécurité
+      });
+    }
+    try{ await video.play(); }catch(e){ /* iOS peut rejeter en silence, le flux tourne quand même */ }
     scanStatus('Vise le code-barres 🎯 (🔦 si sombre)');
     await startDetection(video);
   }catch(e){

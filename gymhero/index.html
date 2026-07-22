@@ -397,41 +397,6 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
   93.5%,95.5%{transform:scaleY(0.07);}
   98%{transform:scaleY(1);}
 }
-/* --- Animation shaker de whey (overlay onglet Nutri) --- */
-.wheyanim{position:fixed; inset:0; z-index:70; pointer-events:none; display:none;
-  align-items:flex-end; justify-content:center; overflow:hidden;}
-.wheyanim.show{display:flex;}
-.wheyanim .wa-figure{width:190px; max-width:52vw; margin-bottom:calc(env(safe-area-inset-bottom) + 74px);
-  transform:translateX(140%); animation:wa-slide 2.9s ease-in-out forwards;}
-.wheyanim .wa-figure svg{width:100%; height:auto; display:block;
-  filter:drop-shadow(0 8px 18px rgba(0,0,0,.35));}
-/* le bras + shaker : monte vers la bouche puis redescend, 3 gorgées */
-.wheyanim .wa-arm{animation:wa-drink 2.9s ease-in-out forwards;}
-.wheyanim .wa-bubble{opacity:0; animation:wa-bubble 2.9s ease-out forwards;}
-@keyframes wa-slide{
-  0%{transform:translateX(140%);}
-  16%,80%{transform:translateX(0);}
-  100%{transform:translateX(140%);}
-}
-@keyframes wa-drink{
-  0%,20%{transform:rotate(0deg);}
-  30%,40%{transform:rotate(98deg);}    /* 1re gorgée : shaker à la bouche */
-  46%{transform:rotate(86deg);}
-  54%,60%{transform:rotate(100deg);}   /* 2e gorgée */
-  66%{transform:rotate(86deg);}
-  72%,76%{transform:rotate(98deg);}    /* 3e gorgée */
-  84%,100%{transform:rotate(0deg);}
-}
-@keyframes wa-bubble{
-  0%,24%{opacity:0; transform:translateY(6px) scale(.7);}
-  40%{opacity:1; transform:translateY(-2px) scale(1);}
-  78%{opacity:1; transform:translateY(-10px) scale(1);}
-  100%{opacity:0; transform:translateY(-18px) scale(.9);}
-}
-@media (prefers-reduced-motion: reduce){
-  .wheyanim .wa-figure{animation-duration:.01s;}
-  .wheyanim .wa-arm{animation:none; transform:rotate(98deg);}
-}
 </style>
 </head>
 <body>
@@ -780,7 +745,6 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
 
 <div id="toast"></div>
 
-<div class="wheyanim" id="wheyanim" aria-hidden="true"></div>
 
 <script>
 /* ============ DONNÉES ============ */
@@ -1059,72 +1023,6 @@ function avatarSVG(){
   return `<svg viewBox="0 0 220 330">${defs}<g transform="translate(110,325) scale(${(0.94+ (hs-0.92)*1.2).toFixed(3)}) translate(-110,-325)"><g class="gh-idle">${s}</g></g></svg>`;
 }
 
-/* ---- Animation : l'avatar boit un shaker de whey (overlay onglet Nutri) ---- */
-function wheyFigureSVG(){
-  const {m,f,hs,sex}=bodyParams();
-  const F=sex==='f';
-  const SW = F ? 24+m*13 : 30+m*18;
-  const armW = F ? 8+m*9 : 10+m*12;
-  const cx=110, shx=SW-3;
-  const base=avatarSVG();
-  // Épaule droite = pivot. Bras rigide (épaule -> main) de longueur telle que,
-  // tourné vers l'intérieur, la main + le shaker arrivent devant la bouche.
-  const shoulderX=cx+shx, shoulderY=92;
-  const mouthX=cx, mouthY=54;
-  // longueur épaule->bouche : le bras (légèrement plié) doit un peu dépasser
-  const reach=Math.hypot(shoulderX-mouthX, shoulderY-mouthY); // ~ distance à la bouche
-  const armLen=reach+6;
-  // Au repos le bras pend : main sous l'épaule, légèrement vers l'intérieur.
-  const handRestX=shoulderX-4, handRestY=shoulderY+armLen*0.92;
-  const midX=(shoulderX+handRestX)/2+5, midY=(shoulderY+handRestY)/2; // petit coude
-  // Shaker autour de (0,0) = la main.
-  const sh=`
-    <g class="wa-shaker">
-      <rect x="-10" y="-30" width="20" height="30" rx="6" fill="#EAF2F8" stroke="#B9CBD8" stroke-width="1.5"/>
-      <rect x="-10" y="-15" width="20" height="15" rx="5" fill="#C8A2E8" opacity="0.92"/>
-      <rect x="-7" y="-27" width="3.5" height="20" rx="1.75" fill="#FFFFFF" opacity="0.55"/>
-      <rect x="-11" y="-36" width="22" height="9" rx="3.5" fill="#7C4DC4"/>
-      <rect x="-11" y="-30" width="22" height="3" rx="1.5" fill="#5E3AA0"/>
-    </g>`;
-  // Groupe bras : pivote autour de l'épaule (transform-origin en view-box).
-  const arm=`
-    <g class="wa-arm">
-      <path d="M ${shoulderX} ${shoulderY} Q ${midX} ${midY} ${handRestX} ${handRestY}"
-            fill="none" stroke="url(#gSkin)" stroke-width="${armW}" stroke-linecap="round"/>
-      <circle cx="${handRestX}" cy="${handRestY}" r="${armW*0.55+2.5}" fill="url(#gSkin)"/>
-      <g transform="translate(${handRestX},${handRestY-6})">${sh}</g>
-    </g>`;
-  const bx=cx+6, by=46;
-  const bubbles=`
-    <g class="wa-bubble">
-      <circle cx="${bx}" cy="${by}" r="3" fill="#C8A2E8"/>
-      <circle cx="${bx+7}" cy="${by-5}" r="2" fill="#C8A2E8"/>
-      <circle cx="${bx-5}" cy="${by-7}" r="1.6" fill="#C8A2E8"/>
-    </g>`;
-  const style=`<style>
-    .wa-arm{transform-box:view-box; transform-origin:${shoulderX}px ${shoulderY}px;}
-  </style>`;
-  return base.replace(/<\/g><\/svg>$/, style+arm+bubbles+'</g></svg>');
-}
-
-let wheyTimer=null;
-function playWheyAnim(){
-  const box=document.getElementById('wheyanim');
-  if(!box) return;
-  if(wheyTimer){ clearTimeout(wheyTimer); wheyTimer=null; }
-  box.innerHTML=`<div class="wa-figure">${wheyFigureSVG()}</div>`;
-  box.classList.add('show');
-  // durée = 2.9s (cf. keyframes) + petite marge
-  wheyTimer=setTimeout(()=>{
-    box.classList.remove('show'); box.innerHTML=''; wheyTimer=null;
-  }, 3100);
-}
-function isWheyFood(name){
-  const n=(name||'').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,''); // enlève les accents
-  return /\b(whey|shaker|proteine|prot pdr|prot poudre|isolat|caseine)\b/.test(n)
-      || /prot(e|é)ine.*(poudre|whey)/.test(n);
-}
 function badgeDefs(){
   const total=D.sessions.length, st=bestStreak();
   const typesDone=new Set(D.sessions.map(s=>s.type));
@@ -1975,7 +1873,6 @@ function addMeal(name,kcal,prot){
   D.meals.push({ts:Date.now(), date:nutriDay, meal:selMeal, name, kcal, prot});
   upsertFav(name,kcal,prot);
   save(); renderNutri(); render();
-  if(isWheyFood(name)) playWheyAnim();
 }
 function renderNutri(){
   const box=document.getElementById('scr-nutri'); if(!box) return;

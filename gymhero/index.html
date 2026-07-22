@@ -204,6 +204,17 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
 .sexbtns{display:flex; gap:10px; margin-top:4px;}
 .sexbtn{flex:1; padding:12px; border-radius:12px; border:1.5px solid #2A3450; background:#141B2E; color:#8C96AA; font-size:15px; font-weight:600; cursor:pointer; transition:all .15s;}
 .sexbtn.on{border-color:#3BD6A0; background:#16281f; color:#3BD6A0;}
+/* --- Personnalisation de l'avatar (coiffure / barbe / couleur) --- */
+.lookrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;}
+.lookbtn{padding:9px 13px; border-radius:11px; border:1.5px solid #2A3450; background:#141B2E;
+  color:#8C96AA; font-size:13.5px; font-weight:600; cursor:pointer; transition:all .15s;}
+.lookbtn.on{border-color:#3BD6A0; background:#16281f; color:#3BD6A0;}
+.colorrow{display:flex; gap:10px; flex-wrap:wrap; margin-top:6px;}
+.colorbtn{width:36px; height:36px; border-radius:50%; border:2.5px solid #2A3450;
+  cursor:pointer; padding:0; transition:all .15s;}
+.colorbtn.on{border-color:#3BD6A0; transform:scale(1.12);}
+.lookprev{display:flex; justify-content:center; margin:2px 0 10px;}
+.lookprev svg{width:118px; height:auto; display:block;}
 /* --- Nutrition --- */
 .daynav{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
 .daynav button{background:var(--card2); border:1px solid var(--line); color:var(--text);
@@ -532,6 +543,16 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
           <button type="button" class="sexbtn" id="sex-f">👩 Femme</button>
         </div>
       </div>
+      <div class="lookprev" id="lookprev"></div>
+      <div class="field"><label>Coiffure</label>
+        <div class="lookrow" id="hairrow"></div>
+      </div>
+      <div class="field" id="beardfield"><label>Barbe</label>
+        <div class="lookrow" id="beardrow"></div>
+      </div>
+      <div class="field" id="colorfield"><label>Couleur de cheveux</label>
+        <div class="colorrow" id="colorrow"></div>
+      </div>
       <div class="row">
         <div class="field grow"><label>Poids (kg)</label><input id="in-w" type="number" inputmode="decimal" step="0.1" placeholder="78.5"></div>
         <div class="field grow"><label>Taille (cm)</label><input id="in-h" type="number" inputmode="numeric" placeholder="180"></div>
@@ -758,6 +779,7 @@ function load(){
       d.meals=d.meals||[]; d.foods=d.foods||[]; d.nutri=d.nutri||{mode:'maintien',kcal:null,prot:null};
       d.routines=d.routines||[]; d.flags=d.flags||{}; d.scanCache=d.scanCache||{};
       if(d.profile&&!d.profile.sex) d.profile.sex='m';
+      if(d.profile) d.profile.look=d.profile.look||null; // apparence : valeurs par défaut si absente
       return d;
     }
   }catch(e){}
@@ -863,25 +885,139 @@ function bodyParams(){
     ? Math.max(0,Math.min(1,(p.bf-14)/24))          // 14% → 38%
     : Math.max(0,Math.min(1,(p.bf-8)/27));          // 8% → 35%
   const hs=0.92+Math.max(0,Math.min(1,(p.h-150)/50))*0.16; // taille
-  return {m,f,hs,sex};
+  const look=normLook(p.look, sex);
+  return {m,f,hs,sex,look};
+}
+/* ---- Apparence : coiffure, barbe, couleur ---- */
+const HAIRCOLORS=[
+  {id:'brun',   n:'Brun',    main:'#3E3428', hi:'#5A4A36'},
+  {id:'chatain',n:'Châtain', main:'#6B4526', hi:'#8A5C34'},
+  {id:'blond',  n:'Blond',   main:'#C9A24B', hi:'#E4C275'},
+  {id:'roux',   n:'Roux',    main:'#A6522A', hi:'#C87340'},
+  {id:'noir',   n:'Noir',    main:'#1F1B18', hi:'#3A332C'},
+  {id:'gris',   n:'Gris',    main:'#8A8A8F', hi:'#B4B4B9'}
+];
+const HAIRSTYLES={
+  m:[{id:'court',n:'Court'},{id:'ras',n:'Rasé'},{id:'chauve',n:'Chauve'},{id:'crete',n:'Crête'},
+     {id:'boucles',n:'Bouclés'},{id:'manbun',n:'Chignon'}],
+  f:[{id:'longs',n:'Longs'},{id:'carre',n:'Carré'},{id:'queue',n:'Queue'},
+     {id:'chignon',n:'Chignon'},{id:'boucles',n:'Bouclés'},{id:'chauve',n:'Chauve'}]
+};
+const BEARDS=[{id:'aucune',n:'Aucune'},{id:'bouc',n:'Bouc'},
+              {id:'courte',n:'Courte'},{id:'pleine',n:'Pleine'},{id:'moustache',n:'Moustache'}];
+function defaultLook(sex){
+  return {hair: sex==='f'?'longs':'court', beard:'aucune', color: sex==='f'?'chatain':'brun'};
+}
+function normLook(look, sex){
+  const d=defaultLook(sex); const L=Object.assign({}, d, look||{});
+  const styles=HAIRSTYLES[sex==='f'?'f':'m'];
+  if(!styles.some(x=>x.id===L.hair)) L.hair=d.hair;
+  if(!BEARDS.some(x=>x.id===L.beard)) L.beard='aucune';
+  if(!HAIRCOLORS.some(c=>c.id===L.color)) L.color=d.color;
+  if(sex==='f') L.beard='aucune';
+  return L;
+}
+function hairColorOf(id){ return HAIRCOLORS.find(c=>c.id===id)||HAIRCOLORS[0]; }
+/* ---- Coiffures : partie avant (posée sur le crâne, tête = cercle r=26 en (cx,42)) ---- */
+function hairFrontSVG(style, cx, main, hi){
+  let o='';
+  switch(style){
+    case 'ras':
+      // calotte fine qui épouse le crâne, front dégagé et tempes remontées
+      o+=`<path d="M ${cx-24.5} 36 Q ${cx-25} 17 ${cx} 16.5 Q ${cx+25} 17 ${cx+24.5} 36 Q ${cx+23} 27 ${cx+16} 25.5 Q ${cx} 22.5 ${cx-16} 25.5 Q ${cx-23} 27 ${cx-24.5} 36 Z" fill="${main}" opacity="0.9"/>`;
+      o+=`<path d="M ${cx-24.5} 36 Q ${cx-23} 28 ${cx-17} 26" fill="none" stroke="${main}" stroke-width="2" stroke-linecap="round" opacity="0.45"/>`;
+      o+=`<path d="M ${cx+24.5} 36 Q ${cx+23} 28 ${cx+17} 26" fill="none" stroke="${main}" stroke-width="2" stroke-linecap="round" opacity="0.45"/>`;
+      break;
+    case 'chauve':
+      // aucun cheveu : uniquement un léger reflet sur le crâne pour garder du volume
+      o+=`<ellipse cx="${cx-7}" cy="24" rx="10" ry="6.5" fill="#FFFFFF" opacity="0.16" transform="rotate(-18 ${cx-7} 24)"/>`;
+      break;
+    case 'crete':
+      o+=`<path d="M ${cx-25} 40 Q ${cx-24} 22 ${cx-9} 19 L ${cx-9} 28 Q ${cx-18} 31 ${cx-25} 40 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx+25} 40 Q ${cx+24} 22 ${cx+9} 19 L ${cx+9} 28 Q ${cx+18} 31 ${cx+25} 40 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx-9} 28 Q ${cx-8} 8 ${cx-1} 2 Q ${cx+3} 8 ${cx+4} 14 Q ${cx+7} 8 ${cx+9} 6 L ${cx+9} 28 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx-4} 12 Q ${cx-1} 7 ${cx+2} 12" fill="none" stroke="${hi}" stroke-width="2.2" stroke-linecap="round" opacity="0.85"/>`;
+      break;
+    case 'boucles':
+      o+=`<path d="M ${cx-26} 40 Q ${cx-26} 14 ${cx} 13 Q ${cx+26} 14 ${cx+26} 40 Q ${cx+13} 28 ${cx} 28 Q ${cx-13} 28 ${cx-26} 40 Z" fill="${main}"/>`;
+      [[-20,22,7],[-9,15,8],[3,14,8],[15,20,7],[-24,32,6],[23,32,6]].forEach(b=>{
+        o+=`<circle cx="${cx+b[0]}" cy="${b[1]}" r="${b[2]}" fill="${main}"/>`;
+      });
+      o+=`<circle cx="${cx-7}" cy="16" r="3" fill="${hi}" opacity="0.65"/>`;
+      o+=`<circle cx="${cx+9}" cy="19" r="2.4" fill="${hi}" opacity="0.6"/>`;
+      break;
+    case 'manbun':
+      o+=`<path d="M ${cx-25} 39 Q ${cx-24} 17 ${cx} 16 Q ${cx+24} 17 ${cx+25} 39 Q ${cx+13} 29 ${cx} 29 Q ${cx-13} 29 ${cx-25} 39 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx-22} 30 Q ${cx-10} 20 ${cx+4} 21" fill="none" stroke="${hi}" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>`;
+      break;
+    case 'carre':
+      o+=`<path d="M ${cx-27} 44 Q ${cx-28} 14 ${cx} 13 Q ${cx+28} 14 ${cx+27} 44 Q ${cx+22} 28 ${cx+10} 26 Q ${cx-4} 24 ${cx-16} 29 Q ${cx-25} 32 ${cx-27} 44 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx-17} 21 Q ${cx-4} 16 ${cx+8} 19" fill="none" stroke="${hi}" stroke-width="2.8" stroke-linecap="round" opacity="0.8"/>`;
+      break;
+    case 'queue':
+      o+=`<path d="M ${cx-25} 40 Q ${cx-25} 14 ${cx} 14 Q ${cx+25} 14 ${cx+25} 40 Q ${cx+14} 27 ${cx} 27 Q ${cx-14} 27 ${cx-25} 40 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx-16} 22 Q ${cx-2} 16 ${cx+12} 21" fill="none" stroke="${hi}" stroke-width="2.6" stroke-linecap="round" opacity="0.8"/>`;
+      break;
+    case 'chignon':
+      o+=`<path d="M ${cx-25} 40 Q ${cx-25} 15 ${cx} 15 Q ${cx+25} 15 ${cx+25} 40 Q ${cx+14} 28 ${cx} 28 Q ${cx-14} 28 ${cx-25} 40 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx-20} 30 Q ${cx-8} 19 ${cx+6} 20" fill="none" stroke="${hi}" stroke-width="2.4" stroke-linecap="round" opacity="0.75"/>`;
+      break;
+    case 'longs':
+      o+=`<path d="M ${cx-26} 42 Q ${cx-28} 13 ${cx} 13 Q ${cx+28} 13 ${cx+26} 42 Q ${cx+22} 26 ${cx+9} 25 Q ${cx+13} 32 ${cx+11} 36 Q ${cx-2} 24 ${cx-15} 30 Q ${cx-24} 32 ${cx-26} 42 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx-18} 20 Q ${cx-6} 15 ${cx+6} 18" fill="none" stroke="${hi}" stroke-width="3" stroke-linecap="round" opacity="0.8"/>`;
+      break;
+    case 'court':
+    default:
+      o+=`<path d="M ${cx-26} 40 Q ${cx-24} 15 ${cx} 15 Q ${cx+24} 15 ${cx+26} 40 Q ${cx+13} 28 ${cx} 28 Q ${cx-13} 28 ${cx-26} 40 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx-14} 21 Q ${cx-2} 17 ${cx+10} 20" fill="none" stroke="${hi}" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>`;
+  }
+  return o;
+}
+/* ---- Barbes : bas du visage. La bouche est en y=55, on la laisse visible. ---- */
+function beardSVG(style, cx, main, hi){
+  let o='';
+  switch(style){
+    case 'moustache':
+      o+=`<path d="M ${cx-11} 51.5 Q ${cx-5} 47.8 ${cx} 50.2 Q ${cx+5} 47.8 ${cx+11} 51.5 Q ${cx+5} 53.8 ${cx} 52.4 Q ${cx-5} 53.8 ${cx-11} 51.5 Z" fill="${main}"/>`;
+      break;
+    case 'bouc':
+      o+=`<path d="M ${cx-10} 51.3 Q ${cx-4.5} 47.8 ${cx} 50 Q ${cx+4.5} 47.8 ${cx+10} 51.3 Q ${cx+4.5} 53.6 ${cx} 52.2 Q ${cx-4.5} 53.6 ${cx-10} 51.3 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx-7.5} 60.5 Q ${cx} 58.8 ${cx+7.5} 60.5 Q ${cx+6.5} 69 ${cx} 70.5 Q ${cx-6.5} 69 ${cx-7.5} 60.5 Z" fill="${main}"/>`;
+      break;
+    case 'courte':
+      o+=`<path d="M ${cx-24} 44 Q ${cx-24} 62 ${cx-13} 69 Q ${cx} 75 ${cx+13} 69 Q ${cx+24} 62 ${cx+24} 44`+
+         ` Q ${cx+21} 54 ${cx+12.5} 56 Q ${cx+11.5} 61 ${cx} 62.5 Q ${cx-11.5} 61 ${cx-12.5} 56 Q ${cx-21} 54 ${cx-24} 44 Z" fill="${main}" opacity="0.6"/>`;
+      o+=`<path d="M ${cx-9.5} 51 Q ${cx-4.5} 48 ${cx} 50 Q ${cx+4.5} 48 ${cx+9.5} 51 Q ${cx+4.5} 53 ${cx} 52 Q ${cx-4.5} 53 ${cx-9.5} 51 Z" fill="${main}" opacity="0.8"/>`;
+      break;
+    case 'pleine':
+      // contour de la mâchoire, avec une échancrure autour de la bouche (y≈55) pour la laisser visible
+      o+=`<path d="M ${cx-25} 42 Q ${cx-26} 64 ${cx-14} 74 Q ${cx} 81 ${cx+14} 74 Q ${cx+26} 64 ${cx+25} 42`+
+         ` Q ${cx+23} 53 ${cx+13} 55.5 Q ${cx+12} 61 ${cx} 62.5 Q ${cx-12} 61 ${cx-13} 55.5 Q ${cx-23} 53 ${cx-25} 42 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx-10} 51 Q ${cx-4.5} 47.5 ${cx} 49.5 Q ${cx+4.5} 47.5 ${cx+10} 51 Q ${cx+4.5} 53 ${cx} 52 Q ${cx-4.5} 53 ${cx-10} 51 Z" fill="${main}"/>`;
+      o+=`<path d="M ${cx-12} 69 Q ${cx} 74 ${cx+12} 69" fill="none" stroke="${hi}" stroke-width="2" stroke-linecap="round" opacity="0.5"/>`;
+      break;
+  }
+  return o;
 }
 function unlockedItems(){
   const s=currentStreak();
   return UNLOCKS.filter(u=>s>=u.w).map(u=>u.id);
 }
 function avatarSVG(){
-  const {m,f,hs,sex}=bodyParams();
+  const {m,f,hs,sex,look}=bodyParams();
   const F=sex==='f';
   const items=unlockedItems();
   const cx=110;
+  const HSTYLE=look.hair, BSTYLE=look.beard;
   // ------- morphologie selon le sexe -------
   const SW = F ? 24+m*13            : 30+m*18;               // demi-largeur épaules
   const WW = F ? Math.max(14,17+f*14-m*3) : Math.max(17,22+f*16-m*3); // demi-largeur taille
   const HW = F ? 29+f*13            : 24+f*12;               // demi-largeur hanches
   const armW = F ? 8+m*9            : 10+m*12;               // épaisseur bras
   const legW = F ? 13+m*6+f*5       : 14+m*8+f*4;            // épaisseur jambes
-  const hairMain = F ? '#6B4526' : '#3E3428';
-  const hairHi   = F ? '#8A5C34' : '#5A4A36';
+  const _hc = hairColorOf(look.color);
+  const hairMain = _hc.main;
+  const hairHi   = _hc.hi;
   const line='#C98F5E';
   const has=id=>items.includes(id);
   // ------- dégradés (effet volume "soft 3D") -------
@@ -898,10 +1034,25 @@ function avatarSVG(){
   let s='';
   // ombre au sol
   s+=`<ellipse cx="${cx}" cy="311" rx="${HW+28}" ry="9" fill="url(#gShadow)"/>`;
-  // ------- cheveux longs (derrière le corps) -------
-  if(F){
+  // ------- cheveux : volume arrière (derrière le corps), selon la coiffure -------
+  if(HSTYLE==='longs'){
     s+=`<path d="M ${cx-27} 32 Q ${cx-36} 60 ${cx-31} 98 Q ${cx-29} 114 ${cx-20} 120 L ${cx-13} 108 Q ${cx-20} 80 ${cx-18} 48 Z" fill="${hairMain}"/>`;
     s+=`<path d="M ${cx+27} 32 Q ${cx+36} 60 ${cx+31} 98 Q ${cx+29} 114 ${cx+20} 120 L ${cx+13} 108 Q ${cx+20} 80 ${cx+18} 48 Z" fill="${hairMain}"/>`;
+  }else if(HSTYLE==='boucles'&&F){
+    s+=`<path d="M ${cx-30} 34 Q ${cx-42} 56 ${cx-34} 76 Q ${cx-28} 86 ${cx-22} 78 Q ${cx-30} 58 ${cx-22} 40 Z" fill="${hairMain}"/>`;
+    s+=`<path d="M ${cx+30} 34 Q ${cx+42} 56 ${cx+34} 76 Q ${cx+28} 86 ${cx+22} 78 Q ${cx+30} 58 ${cx+22} 40 Z" fill="${hairMain}"/>`;
+  }else if(HSTYLE==='queue'){
+    s+=`<path d="M ${cx+24} 26 Q ${cx+44} 40 ${cx+40} 66 Q ${cx+38} 82 ${cx+29} 86 Q ${cx+34} 64 ${cx+26} 42 Z" fill="${hairMain}"/>`;
+    s+=`<ellipse cx="${cx+25}" cy="30" rx="6" ry="5" fill="${hairHi}"/>`;
+  }else if(HSTYLE==='carre'){
+    s+=`<path d="M ${cx-27} 32 Q ${cx-31} 52 ${cx-27} 66 L ${cx-14} 64 Q ${cx-19} 50 ${cx-18} 40 Z" fill="${hairMain}"/>`;
+    s+=`<path d="M ${cx+27} 32 Q ${cx+31} 52 ${cx+27} 66 L ${cx+14} 64 Q ${cx+19} 50 ${cx+18} 40 Z" fill="${hairMain}"/>`;
+  }else if(HSTYLE==='chignon'){
+    s+=`<circle cx="${cx}" cy="12" r="11" fill="${hairMain}"/>`;
+    s+=`<path d="M ${cx-7} 8 Q ${cx} 4 ${cx+7} 9" fill="none" stroke="${hairHi}" stroke-width="2.4" stroke-linecap="round" opacity="0.85"/>`;
+  }else if(HSTYLE==='manbun'){
+    s+=`<circle cx="${cx}" cy="15" r="8" fill="${hairMain}"/>`;
+    s+=`<path d="M ${cx-5} 12 Q ${cx} 9 ${cx+5} 13" fill="none" stroke="${hairHi}" stroke-width="2" stroke-linecap="round" opacity="0.85"/>`;
   }
   // ------- corps -------
   // jambes
@@ -984,14 +1135,8 @@ function avatarSVG(){
   s+=`<circle cx="${cx-25.5}" cy="45" r="5" fill="url(#gFace)"/><circle cx="${cx+25.5}" cy="45" r="5" fill="url(#gFace)"/>`;
   if(F){ s+=`<circle cx="${cx-25.5}" cy="49.5" r="1.7" fill="url(#gGold)"/><circle cx="${cx+25.5}" cy="49.5" r="1.7" fill="url(#gGold)"/>`; }
   s+=`<circle cx="${cx}" cy="42" r="26" fill="url(#gFace)"/>`;
-  // cheveux (avant) + reflet
-  if(F){
-    s+=`<path d="M ${cx-26} 42 Q ${cx-28} 13 ${cx} 13 Q ${cx+28} 13 ${cx+26} 42 Q ${cx+22} 26 ${cx+9} 25 Q ${cx+13} 32 ${cx+11} 36 Q ${cx-2} 24 ${cx-15} 30 Q ${cx-24} 32 ${cx-26} 42 Z" fill="${hairMain}"/>`;
-    s+=`<path d="M ${cx-18} 20 Q ${cx-6} 15 ${cx+6} 18" fill="none" stroke="${hairHi}" stroke-width="3" stroke-linecap="round" opacity="0.8"/>`;
-  }else{
-    s+=`<path d="M ${cx-26} 40 Q ${cx-24} 15 ${cx} 15 Q ${cx+24} 15 ${cx+26} 40 Q ${cx+13} 28 ${cx} 28 Q ${cx-13} 28 ${cx-26} 40 Z" fill="${hairMain}"/>`;
-    s+=`<path d="M ${cx-14} 21 Q ${cx-2} 17 ${cx+10} 20" fill="none" stroke="${hairHi}" stroke-width="2.5" stroke-linecap="round" opacity="0.8"/>`;
-  }
+  // cheveux (avant) + reflet, selon la coiffure choisie
+  s+=hairFrontSVG(HSTYLE, cx, hairMain, hairHi);
   // sourcils (marqués, style cartoon)
   s+=`<path d="M ${cx-15} 33 Q ${cx-10} 30 ${cx-4.5} 32.5 M ${cx+4.5} 32.5 Q ${cx+10} 30 ${cx+15} 33" fill="none" stroke="${hairMain}" stroke-width="3" stroke-linecap="round"/>`;
   // yeux expressifs : blanc + iris + pupille + reflet (+ cils)
@@ -1011,13 +1156,16 @@ function avatarSVG(){
   // sourire (s'agrandit avec la série)
   const smile=Math.min(currentStreak(),6);
   s+=`<path d="M ${cx-8} 55 Q ${cx} ${55+3+smile} ${cx+8} 55" fill="none" stroke="${F?'#C9606B':'#B4635B'}" stroke-width="2.5" stroke-linecap="round"/>`;
+  // barbe (par-dessus le bas du visage, sous la bouche pour ne pas la masquer)
+  if(!F && BSTYLE!=='aucune') s+=beardSVG(BSTYLE, cx, hairMain, hairHi);
   if(has('cap')){
     s+=`<path d="M ${cx-27} 36 Q ${cx-26} 11 ${cx} 11 Q ${cx+26} 11 ${cx+27} 36 Z" fill="#FF6B4A"/>`;
     s+=`<path d="M ${cx-20} 19 Q ${cx-8} 13 ${cx+4} 16" fill="none" stroke="#FF8D73" stroke-width="3" stroke-linecap="round" opacity="0.9"/>`;
     s+=`<path d="M ${cx-2} 32 L ${cx+36} 30 Q ${cx+38} 36 ${cx+32} 37 L ${cx-2} 37 Z" fill="#E0532F"/>`;
     s+=`<circle cx="${cx}" cy="21" r="3.5" fill="#FFD9CE"/>`;
-    if(F){
+    if(HSTYLE==='longs'||HSTYLE==='boucles'||HSTYLE==='carre'){
       s+=`<path d="M ${cx-24} 30 Q ${cx-36} 44 ${cx-32} 62 Q ${cx-29} 70 ${cx-24} 68 Q ${cx-28} 50 ${cx-20} 36 Z" fill="${hairMain}"/>`;
+      s+=`<path d="M ${cx+24} 30 Q ${cx+36} 44 ${cx+32} 62 Q ${cx+29} 70 ${cx+24} 68 Q ${cx+28} 50 ${cx+20} 36 Z" fill="${hairMain}"/>`;
     }
   }
   return `<svg viewBox="0 0 220 330">${defs}<g transform="translate(110,325) scale(${(0.94+ (hs-0.92)*1.2).toFixed(3)}) translate(-110,-325)"><g class="gh-idle">${s}</g></g></svg>`;
@@ -1242,23 +1390,104 @@ document.getElementById('goalsel').addEventListener('change',e=>{
   D.goal=parseInt(e.target.value,10); save(); render();
 });
 let selSex=(D.profile&&D.profile.sex)||'m';
+let selLook=normLook(D.profile&&D.profile.look, selSex);
 function renderSexBtns(){
   document.getElementById('sex-m').classList.toggle('on',selSex==='m');
   document.getElementById('sex-f').classList.toggle('on',selSex==='f');
 }
+/* ---- Sélecteurs d'apparence ---- */
+function renderLookBtns(){
+  const hr=document.getElementById('hairrow');
+  const br=document.getElementById('beardrow');
+  const cr=document.getElementById('colorrow');
+  const bf=document.getElementById('beardfield');
+  if(!hr||!br||!cr) return;
+  selLook=normLook(selLook, selSex);
+  hr.innerHTML=HAIRSTYLES[selSex==='f'?'f':'m'].map(x=>
+    `<button type="button" class="lookbtn${selLook.hair===x.id?' on':''}" data-hair="${x.id}">${x.n}</button>`).join('');
+  br.innerHTML=BEARDS.map(x=>
+    `<button type="button" class="lookbtn${selLook.beard===x.id?' on':''}" data-beard="${x.id}">${x.n}</button>`).join('');
+  cr.innerHTML=HAIRCOLORS.map(c=>
+    `<button type="button" class="colorbtn${selLook.color===c.id?' on':''}" data-color="${c.id}" title="${c.n}" aria-label="${c.n}" style="background:${c.main}"></button>`).join('');
+  if(bf) bf.style.display = selSex==='f' ? 'none' : '';
+  const cf=document.getElementById('colorfield');
+  if(cf){
+    const bald = selLook.hair==='chauve';
+    // chauve : la couleur ne sert plus qu'aux sourcils (et à la barbe chez l'homme)
+    cf.style.display = (bald && selSex==='f') ? 'none' : '';
+    const lb=cf.querySelector('label');
+    if(lb) lb.textContent = bald ? 'Couleur (sourcils et barbe)' : 'Couleur de cheveux';
+  }
+  renderLookPreview();
+}
+function renderLookPreview(){
+  const box=document.getElementById('lookprev'); if(!box) return;
+  box.innerHTML=avatarHeadPreview(selSex, selLook);
+}
+/* Aperçu : juste la tête, avec la coiffure / barbe / couleur sélectionnées */
+function avatarHeadPreview(sex, look){
+  const L=normLook(look, sex), F=sex==='f', cx=110, c=hairColorOf(L.color);
+  let o=`<defs><radialGradient id="pFace" cx="0.38" cy="0.32" r="0.95">`+
+        `<stop offset="0" stop-color="#F7D2A8"/><stop offset="0.65" stop-color="#E9BA8B"/>`+
+        `<stop offset="1" stop-color="#D5A171"/></radialGradient></defs>`;
+  if(L.hair==='longs'){
+    o+=`<path d="M ${cx-27} 32 Q ${cx-36} 58 ${cx-31} 84 L ${cx-16} 82 Q ${cx-20} 60 ${cx-18} 48 Z" fill="${c.main}"/>`;
+    o+=`<path d="M ${cx+27} 32 Q ${cx+36} 58 ${cx+31} 84 L ${cx+16} 82 Q ${cx+20} 60 ${cx+18} 48 Z" fill="${c.main}"/>`;
+  }else if(L.hair==='queue'){
+    o+=`<path d="M ${cx+24} 26 Q ${cx+44} 40 ${cx+40} 66 Q ${cx+38} 80 ${cx+29} 84 Q ${cx+34} 62 ${cx+26} 42 Z" fill="${c.main}"/>`;
+  }else if(L.hair==='chignon'){
+    o+=`<circle cx="${cx}" cy="12" r="11" fill="${c.main}"/>`;
+  }else if(L.hair==='manbun'){
+    o+=`<circle cx="${cx}" cy="15" r="8" fill="${c.main}"/>`;
+  }else if(L.hair==='carre'){
+    o+=`<path d="M ${cx-27} 32 Q ${cx-31} 52 ${cx-27} 66 L ${cx-14} 64 Q ${cx-19} 50 ${cx-18} 40 Z" fill="${c.main}"/>`;
+    o+=`<path d="M ${cx+27} 32 Q ${cx+31} 52 ${cx+27} 66 L ${cx+14} 64 Q ${cx+19} 50 ${cx+18} 40 Z" fill="${c.main}"/>`;
+  }
+  o+=`<circle cx="${cx-25.5}" cy="45" r="5" fill="url(#pFace)"/><circle cx="${cx+25.5}" cy="45" r="5" fill="url(#pFace)"/>`;
+  o+=`<circle cx="${cx}" cy="42" r="26" fill="url(#pFace)"/>`;
+  o+=hairFrontSVG(L.hair, cx, c.main, c.hi);
+  o+=`<path d="M ${cx-15} 33 Q ${cx-10} 30 ${cx-4.5} 32.5 M ${cx+4.5} 32.5 Q ${cx+10} 30 ${cx+15} 33" fill="none" stroke="${c.main}" stroke-width="3" stroke-linecap="round"/>`;
+  o+=`<ellipse cx="${cx-9.5}" cy="42" rx="5.6" ry="6.4" fill="#FFFFFF"/><ellipse cx="${cx+9.5}" cy="42" rx="5.6" ry="6.4" fill="#FFFFFF"/>`;
+  o+=`<circle cx="${cx-9}" cy="42.7" r="3.3" fill="#6B4A2F"/><circle cx="${cx+9}" cy="42.7" r="3.3" fill="#6B4A2F"/>`;
+  o+=`<circle cx="${cx-9}" cy="42.7" r="1.6" fill="#241812"/><circle cx="${cx+9}" cy="42.7" r="1.6" fill="#241812"/>`;
+  o+=`<circle cx="${cx-10.3}" cy="41.2" r="1.1" fill="#FFFFFF"/><circle cx="${cx+7.7}" cy="41.2" r="1.1" fill="#FFFFFF"/>`;
+  o+=`<path d="M ${cx-2} 48.5 q 2 3 4.5 0.5" fill="none" stroke="#C98F5E" stroke-width="2" stroke-linecap="round"/>`;
+  o+=`<path d="M ${cx-8} 55 Q ${cx} 60 ${cx+8} 55" fill="none" stroke="${F?'#C9606B':'#B4635B'}" stroke-width="2.5" stroke-linecap="round"/>`;
+  if(!F && L.beard!=='aucune') o+=beardSVG(L.beard, cx, c.main, c.hi);
+  return `<svg viewBox="${cx-46} 0 92 92" role="img" aria-label="Aperçu de l'avatar">${o}</svg>`;
+}
+function applyLook(){
+  if(D.profile){ D.profile.look=Object.assign({}, selLook); save(); render(); }
+  renderLookBtns();
+}
+document.getElementById('hairrow').addEventListener('click',e=>{
+  const b=e.target.closest('[data-hair]'); if(!b) return;
+  selLook.hair=b.dataset.hair; applyLook();
+});
+document.getElementById('beardrow').addEventListener('click',e=>{
+  const b=e.target.closest('[data-beard]'); if(!b) return;
+  selLook.beard=b.dataset.beard; applyLook();
+});
+document.getElementById('colorrow').addEventListener('click',e=>{
+  const b=e.target.closest('[data-color]'); if(!b) return;
+  selLook.color=b.dataset.color; applyLook();
+});
 ['m','f'].forEach(x=>{
   document.getElementById('sex-'+x).addEventListener('click',()=>{
     selSex=x; renderSexBtns();
-    if(D.profile){ D.profile.sex=x; save(); render(); } // changement immédiat de l'avatar
+    selLook=normLook(selLook, selSex);
+    if(D.profile){ D.profile.sex=x; D.profile.look=Object.assign({}, selLook); save(); render(); } // changement immédiat de l'avatar
+    renderLookBtns();
   });
 });
 renderSexBtns();
+renderLookBtns();
 document.getElementById('savemes').addEventListener('click',()=>{
   const w=parseFloat(document.getElementById('in-w').value);
   const h=parseFloat(document.getElementById('in-h').value);
   const bf=parseFloat(document.getElementById('in-bf').value);
   if(!w||!h||!bf){ toast('Remplis les trois champs 🙂'); return; }
-  D.profile={w,h,bf,sex:selSex};
+  D.profile={w,h,bf,sex:selSex,look:Object.assign({},normLook(selLook,selSex))};
   D.measures=D.measures.filter(m=>m.date!==today());
   D.measures.push({date:today(), w, bf});
   save(); render(); toast('Avatar mis à jour ✨');
@@ -1629,6 +1858,7 @@ document.getElementById('importfile').addEventListener('change',e=>{
       if(!confirm(`Restaurer cette sauvegarde ? (${d.sessions.length} séances, ${(d.logs||[]).length} perfs, ${(d.measures||[]).length} mesures)\n\n⚠️ Les données actuelles seront remplacées.`)) return;
       localStorage.setItem(KEY, JSON.stringify(d));
       D=load(); selSex=(D.profile&&D.profile.sex)||'m'; renderSexBtns();
+      selLook=normLook(D.profile&&D.profile.look, selSex); renderLookBtns();
       render(); toast('Sauvegarde restaurée ✅');
     }catch(err){
       toast('Fichier invalide — export GymHero attendu 😕');

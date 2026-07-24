@@ -1,4 +1,4 @@
-const CACHE = 'gymhero-v24';
+const CACHE = 'gymhero-v26';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './zxing.min.js'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -17,4 +17,28 @@ self.addEventListener('fetch', e => {
       return res;
     }).catch(() => caches.match('./index.html')))
   );
+});
+
+/* ===== Notification de fin de repos ===== */
+self.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type === 'REST_DONE') {
+    e.waitUntil(self.registration.showNotification('Repos terminé ! 💪', {
+      body: d.body || 'Tu peux reprendre l\u2019exercice !',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: 'gymhero-rest',
+      renotify: true,
+      requireInteraction: false,
+      vibrate: [200, 100, 200, 100, 400],
+      data: { url: './' }
+    }));
+  }
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) { if ('focus' in c) return c.focus(); }
+    if (self.clients.openWindow) return self.clients.openWindow('./');
+  }));
 });

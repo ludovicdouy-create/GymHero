@@ -107,7 +107,19 @@ header.top .sub{color:var(--muted); font-size:13px;}
 .wd .dot{width:26px; height:26px; border-radius:50%; background:var(--card2);
   border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:13px;}
 .wd.done .dot{background:var(--teal); border-color:var(--teal); color:#06382A; font-weight:800;}
+/* --- Cheat meal --- */
+.wd.cheat .dot{background:var(--coral); border-color:var(--coral); color:#fff; font-size:12px;}
+.wd.dual .dot{border-color:var(--gold); color:#fff; font-weight:800;
+  background:linear-gradient(135deg, var(--teal) 0 50%, var(--coral) 50% 100%);
+  text-shadow:0 1px 2px rgba(0,0,0,.45);}
 .wd.today .dot{border-color:var(--gold);}
+.wd.dual.today .dot, .wd.cheat.today .dot{box-shadow:0 0 0 1px var(--gold);}
+.weeklegend{display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; font-size:11.5px; color:var(--muted);}
+.weeklegend span{display:flex; align-items:center; gap:5px;}
+.weeklegend i{width:12px; height:12px; border-radius:50%; display:inline-block; flex:none;}
+.weeklegend i.lg-done{background:var(--teal);}
+.weeklegend i.lg-cheat{background:var(--coral);}
+.weeklegend i.lg-dual{background:linear-gradient(135deg, var(--teal) 0 50%, var(--coral) 50% 100%);}
 .goalline{margin-top:12px; font-size:13px; color:var(--muted); display:flex; justify-content:space-between; align-items:center;}
 .goalline select{background:var(--card2); color:var(--text); border:1px solid var(--line);
   border-radius:8px; padding:4px 8px; font-size:13px;}
@@ -229,6 +241,8 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
 .nbar.kcal .fill{background:var(--gold);}
 .nbar.over .fill{background:var(--coral);}
 .mealseg{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px;}
+.mealseg button[data-m="c"]{grid-column:1 / -1;}
+.mealseg button[data-m="c"].on{border-color:var(--coral); color:var(--coral);}
 .sessdate{display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px;}
 .sessdate button{background:var(--card2); border:1px solid var(--line); color:var(--muted);
   border-radius:10px; padding:9px 2px; font-size:12px; cursor:pointer; font-family:ui-rounded;}
@@ -340,6 +354,8 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
   display:flex; justify-content:space-between;}
 .mealgroup:first-child h3{margin-top:0;}
 .mealgroup h3 .mk{font-family:ui-rounded; color:var(--text); font-weight:700;}
+.mealgroup.cheat h3{color:var(--coral);}
+.mealgroup.cheat h3 .mk{color:var(--coral);}
 .foodlist{list-style:none; margin:0; padding:0;}
 .foodlist li{display:flex; justify-content:space-between; align-items:center;
   padding:7px 2px; border-bottom:1px solid var(--line); font-size:14px;}
@@ -363,6 +379,13 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
   border-radius:999px; padding:8px 12px; font-size:13px; font-family:ui-rounded; cursor:pointer;}
 .tpresets button:active{border-color:var(--teal);}
 .tpresets button.stop{color:var(--coral);}
+.notifline{margin-top:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  background:var(--card2); border-radius:12px; padding:10px 13px;}
+.notifline .nl-txt{flex:1; min-width:140px; font-size:12.5px; color:var(--muted); line-height:1.45;}
+.notifline .nl-btn{background:var(--teal); color:#06382A; border:none; border-radius:999px;
+  padding:8px 14px; font-size:13px; font-weight:800; font-family:ui-rounded; cursor:pointer;}
+.notifline.on .nl-btn{background:var(--card); color:var(--muted); border:1px solid var(--line);}
+.notifline.hide{display:none;}
 /* --- Routines --- */
 .routlist{list-style:none; margin:0 0 4px; padding:0;}
 .routlist li{display:flex; align-items:center; justify-content:space-between; gap:8px;
@@ -503,6 +526,11 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
     <div class="card">
       <h2>Cette semaine</h2>
       <div class="weekdots" id="weekdots"></div>
+      <div class="weeklegend" id="weeklegend">
+        <span><i class="lg-done"></i>Séance validée</span>
+        <span><i class="lg-cheat"></i>Cheat meal</span>
+        <span><i class="lg-dual"></i>Séance + cheat</span>
+      </div>
       <div class="goalline">
         <span id="weekprog"></span>
         <span>Objectif&nbsp;
@@ -642,6 +670,10 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
             <button data-s="180">3:00</button>
             <button class="stop" id="tstop" style="display:none;">Stop</button>
           </div>
+        </div>
+        <div class="notifline" id="notifline">
+          <span class="nl-txt" id="notif-txt">Reçois une alerte quand le repos est fini, même écran éteint.</span>
+          <button class="nl-btn" id="notif-btn">Activer 🔔</button>
         </div>
       </div>
       <div class="card">
@@ -825,6 +857,7 @@ function uniqueDaysInWeek(monday){
   }
   return days;
 }
+function isSessionDay(date){ return D.sessions.some(s=>s.date===date); }
 /* Jokers : 1 gagné toutes les 4 semaines régulières (max 2 en réserve).
    Une semaine ratée consomme un joker au lieu de casser la série.
    Calcul déterministe à partir de l'historique — rien à stocker. */
@@ -1272,7 +1305,15 @@ function render(){
   for(let i=0;i<7;i++){
     const ds=addDays(mon,i);
     const done=days.has(ds), isToday=ds===today(), future=ds>today();
-    wd+=`<div class="wd ${done?'done':''} ${isToday?'today':''} ${future?'future':''} ${(!future&&ds===selDay)?'sel':''}" data-date="${ds}" role="button" aria-label="Séance du ${FR_D[i]}"><span class="dot">${done?'✓':''}</span>${FR_D[i]}</div>`;
+    const cheat=!future && isCheatDay(ds);
+    const dual=done && cheat;
+    const cls=[dual?'dual':(cheat?'cheat':''), done?'done':'', isToday?'today':'',
+               future?'future':'', (!future&&ds===selDay)?'sel':''].filter(Boolean).join(' ');
+    const mark = dual ? '✓' : (cheat ? '🍔' : (done ? '✓' : ''));
+    const lab = dual ? `Séance validée et cheat meal — ${FR_D[i]}`
+              : cheat ? `Cheat meal — ${FR_D[i]}`
+              : `Séance du ${FR_D[i]}`;
+    wd+=`<div class="wd ${cls}" data-date="${ds}" role="button" aria-label="${lab}"><span class="dot">${mark}</span>${FR_D[i]}</div>`;
   }
   document.getElementById('weekdots').innerHTML=wd;
   document.getElementById('weekprog').textContent=`${days.size}/${D.goal} jours — ${days.size>=D.goal?'objectif atteint 🔥':'en cours'}`;
@@ -1727,29 +1768,114 @@ document.getElementById('routnext').addEventListener('click',()=>{
 });
 
 /* ============ TIMER DE REPOS ============ */
-let timerEnd=null, timerInt=null;
+let timerEnd=null, timerInt=null, timerFired=false;
+const REST_MSG='Tu peux reprendre l\u2019exercice !';
 function fmtT(s){ return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+/* --- Notifications --- */
+const notifOK=()=> ('Notification' in window) && Notification.permission==='granted';
+function renderNotifUI(){
+  const line=document.getElementById('notifline'); if(!line) return;
+  const txt=document.getElementById('notif-txt'), btn=document.getElementById('notif-btn');
+  if(!('Notification' in window)){ line.classList.add('hide'); return; }
+  if(Notification.permission==='granted'){
+    line.classList.add('on');
+    txt.textContent='Alerte de fin de repos activée 🔔';
+    btn.textContent='Tester';
+  } else if(Notification.permission==='denied'){
+    line.classList.add('on');
+    txt.textContent='Notifications bloquées. Autorise-les dans les réglages de ton navigateur.';
+    btn.textContent='Réessayer';
+  } else {
+    line.classList.remove('on');
+    txt.textContent='Reçois une alerte quand le repos est fini, même écran éteint.';
+    btn.textContent='Activer 🔔';
+  }
+}
+function pushRestNotif(){
+  if(!notifOK()) return false;
+  try{
+    if(navigator.serviceWorker && navigator.serviceWorker.ready){
+      navigator.serviceWorker.ready.then(reg=>{
+        if(reg && reg.active) reg.active.postMessage({type:'REST_DONE', body:REST_MSG});
+        else if(reg) reg.showNotification('Repos terminé ! 💪',{body:REST_MSG,icon:'./icon-192.png',tag:'gymhero-rest'});
+      }).catch(()=>{ new Notification('Repos terminé ! 💪',{body:REST_MSG,icon:'./icon-192.png'}); });
+      return true;
+    }
+    new Notification('Repos terminé ! 💪',{body:REST_MSG,icon:'./icon-192.png'});
+    return true;
+  }catch(_){ return false; }
+}
+const notifBtn=document.getElementById('notif-btn');
+if(notifBtn) notifBtn.addEventListener('click',()=>{
+  if(!('Notification' in window)){ toast('Notifications non supportées sur cet appareil'); return; }
+  if(Notification.permission==='granted'){ primeBeep(); pushRestNotif(); toast('Notification de test envoyée 🔔'); return; }
+  Notification.requestPermission().then(p=>{
+    renderNotifUI();
+    if(p==='granted'){ primeBeep(); toast('Alerte de repos activée 🔔'); }
+    else toast('Permission refusée — tu auras seulement le son et la vibration');
+  }).catch(()=>{});
+});
+renderNotifUI();
+
+/* --- Bip sonore --- */
+let audioCtx=null;
+function primeBeep(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+    if(!audioCtx) audioCtx=new AC();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+  }catch(_){}
+}
+function beep(){
+  try{
+    if(!audioCtx) primeBeep();
+    if(!audioCtx) return;
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    [0,0.28,0.56].forEach((off,i)=>{
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      const t=audioCtx.currentTime+off;
+      o.type='sine'; o.frequency.setValueAtTime(i===2?1100:880,t);
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(0.35,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t); o.stop(t+0.24);
+    });
+  }catch(_){}
+}
+
 function stopTimer(){
-  clearInterval(timerInt); timerInt=null; timerEnd=null;
+  clearInterval(timerInt); timerInt=null; timerEnd=null; timerFired=false;
   const d=document.getElementById('tdisp');
   if(d){ d.textContent='–:––'; d.classList.remove('run'); }
   const st=document.getElementById('tstop'); if(st) st.style.display='none';
 }
+function restDone(){
+  if(timerFired) return;
+  timerFired=true;
+  clearInterval(timerInt); timerInt=null; timerEnd=null;
+  const d=document.getElementById('tdisp');
+  if(d){ d.textContent='0:00'; d.classList.remove('run'); }
+  const st=document.getElementById('tstop'); if(st) st.style.display='none';
+  if(navigator.vibrate) navigator.vibrate([200,100,200,100,400]);
+  beep();
+  pushRestNotif();
+  toast('⏱️ Repos terminé — '+REST_MSG);
+}
 function tickTimer(){
+  if(timerEnd===null) return;
   const left=Math.max(0, Math.round((timerEnd-Date.now())/1000));
   const d=document.getElementById('tdisp');
   if(d) d.textContent=fmtT(left);
-  if(left<=0){
-    stopTimer();
-    if(d) d.textContent='0:00';
-    if(navigator.vibrate) navigator.vibrate([200,100,200,100,400]);
-    toast('⏱️ Repos terminé — série suivante !');
-  }
+  if(left<=0) restDone();
 }
 document.getElementById('tpresets').addEventListener('click',e=>{
   const b=e.target.closest('button[data-s]');
   if(b){
     stopTimer();
+    primeBeep();
+    timerFired=false;
     timerEnd=Date.now()+parseInt(b.dataset.s,10)*1000;
     document.getElementById('tdisp').classList.add('run');
     document.getElementById('tstop').style.display='';
@@ -1759,6 +1885,9 @@ document.getElementById('tpresets').addEventListener('click',e=>{
   }
   if(e.target.closest('#tstop')) stopTimer();
 });
+/* Retour au premier plan : rattrape le temps écoulé pendant la mise en veille */
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && timerEnd!==null) tickTimer(); });
+window.addEventListener('focus',()=>{ if(timerEnd!==null) tickTimer(); });
 
 /* ============ RECORDS & VOLUME ============ */
 function renderRecords(){
@@ -1873,7 +2002,10 @@ const MEALS=[
   {id:'l', n:'Déjeuner',  e:'🍽️'},
   {id:'s', n:'Collation', e:'🍎'},
   {id:'d', n:'Dîner',     e:'🌙'},
+  {id:'c', n:'Cheat meal', e:'🍔'},
 ];
+const CHEAT_ID='c';
+function isCheatDay(date){ return D.meals.some(m=>m.date===date && m.meal===CHEAT_ID); }
 let nutriDay=today();
 let selMeal=(h=>h<11?'b':h<15?'l':h<18?'s':'d')(new Date().getHours());
 
@@ -2146,7 +2278,8 @@ function renderNutri(){
       const items=ms.filter(x=>x.meal===M.id);
       if(!items.length) return '';
       const sub=Math.round(items.reduce((a,x)=>a+(x.kcal||0),0));
-      return `<div class="mealgroup"><h3>${M.e} ${M.n}<span class="mk">${sub} kcal</span></h3>
+      const ch=M.id===CHEAT_ID?' cheat':'';
+      return `<div class="mealgroup${ch}"><h3>${M.e} ${M.n}<span class="mk">${sub} kcal</span></h3>
         <ul class="foodlist">${items.map(x=>
           `<li><div><div>${x.name}</div><div class="fd">${x.kcal}\u00A0kcal${x.prot?` · ${x.prot}\u00A0g prot.`:''}</div></div>
            <button class="del" data-ts="${x.ts}">✕</button></li>`).join('')}</ul></div>`;
@@ -2735,7 +2868,13 @@ document.getElementById('addfood').addEventListener('click',()=>{
   document.getElementById('in-fkcal').value='';
   document.getElementById('in-fprot').value='';
   const t=nutriTargets(), tot=dayTotals(nutriDay);
-  toast(tot.prot>=t.prot?'🍗 Objectif protéines atteint !':'Aliment noté ✅');
+  if(selMeal===CHEAT_ID){
+    toast(isSessionDay(nutriDay)
+      ? '🍔 Cheat meal noté — séance validée quand même, bravo ! 💪'
+      : '🍔 Cheat meal noté — journée marquée en rouge.');
+  }else{
+    toast(tot.prot>=t.prot?'🍗 Objectif protéines atteint !':'Aliment noté ✅');
+  }
 });
 document.getElementById('favwrap').addEventListener('click',e=>{
   const fx=e.target.closest('.fx');

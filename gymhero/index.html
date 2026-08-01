@@ -755,7 +755,7 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
         <span class="pe-ico">🍽️</span>
         <span class="pe-txt">
           <span class="pe-name">Programme Dorothée</span>
-          <span class="pe-meta">Semaine 1 · ~1850 kcal / jour</span>
+          <span class="pe-meta">Semaines 1-2 · ~1850 kcal / jour</span>
         </span>
         <span class="pe-chev">›</span>
       </button>
@@ -2503,6 +2503,139 @@ const PROG_DOROTHEE = {
         ]}
       ]}
     ]
+  },{
+    n:2,
+    breakfast:{
+      title:'Petit-déjeuner type (tous les jours)',
+      ing:[
+        {n:'Flocons d\u2019avoine', q:'40 g', k:150},
+        {n:'Lait demi-écrémé', q:'200 ml', k:96},
+        {n:'Yaourt nature', q:'125 g', k:65},
+        {n:'1 fruit (banane ou pomme)', q:'~120 g', k:70, alt:'ou 1 compote (100 g) : ~70 kcal'},
+        {n:'Café ou thé + nuage de lait', q:'30 ml de lait', k:15}
+      ]
+    },
+    days:[
+      {d:'Lundi', meals:[
+        {m:'Midi', ing:[
+          {n:'Cabillaud vapeur', q:'150 g', k:135},
+          {n:'Riz basmati cuit', q:'220 g', k:290},
+          {n:'Courgettes poêlées', q:'150 g', k:60},
+          {n:'Filet d\u2019huile d\u2019olive', q:'10 ml', k:90},
+          {n:'Fromage blanc nature', q:'150 g', k:115}
+        ]},
+        {m:'Soir', ing:[
+          {n:'Jambon blanc', q:'2 tranches (80 g)', k:100},
+          {n:'Purée maison', q:'250 g', k:200},
+          {n:'Haricots verts', q:'150 g', k:45},
+          {n:'Noisette de beurre', q:'15 g', k:110}
+        ]},
+        {m:'Collation', ing:[
+          {n:'Yaourt aux fruits', q:'125 g', k:110},
+          {n:'Amandes', q:'20 g', k:120}
+        ]}
+      ]},
+      {d:'Mardi', meals:[
+        {m:'Midi', ing:[
+          {n:'Salade de pâtes au thon', q:'1 grande barquette (350 g)', k:560},
+          {n:'Tomates cerises', q:'60 g', k:12},
+          {n:'Filet d\u2019huile d\u2019olive', q:'5 ml', k:45}
+        ]},
+        {m:'Soir', ing:[
+          {n:'Escalope de dinde', q:'150 g', k:230},
+          {n:'Pommes de terre vapeur', q:'250 g', k:200},
+          {n:'Haricots beurre', q:'150 g', k:45},
+          {n:'Beurre', q:'10 g', k:75}
+        ]},
+        {m:'Collation', ing:[
+          {n:'Compote', q:'1 pot (100 g)', k:70},
+          {n:'Barre de céréales', q:'25 g', k:105}
+        ]}
+      ]},
+      {d:'Mercredi', meals:[
+        {m:'Midi', ing:[
+          {n:'Galette de blé (wrap)', q:'1 galette (45 g)', k:140},
+          {n:'Houmous', q:'60 g', k:150},
+          {n:'Concombre et poivrons', q:'100 g', k:20},
+          {n:'Feta', q:'30 g', k:80},
+          {n:'Fromage blanc nature', q:'100 g', k:75}
+        ]},
+        {m:'Soir', ing:[
+          {n:'Filet de saumon', q:'150 g', k:310},
+          {n:'Riz cuit', q:'220 g', k:290},
+          {n:'Épinards', q:'150 g', k:45},
+          {n:'Filet d\u2019huile d\u2019olive', q:'10 ml', k:90}
+        ]},
+        {m:'Collation', ing:[
+          {n:'Crème dessert chocolat', q:'1 pot (125 g)', k:155}
+        ]}
+      ]},
+      {d:'Jeudi', meals:[
+        {m:'Midi', ing:[
+          {n:'Salade César maison (poulet, parmesan, croûtons)', q:'320 g', k:520},
+          {n:'Sauce César légère', q:'20 g', k:75}
+        ]},
+        {m:'Soir', ing:[
+          {n:'Chili sin carne (haricots rouges, maïs, tomate)', q:'300 g', k:320},
+          {n:'Riz cuit', q:'120 g', k:155},
+          {n:'Fromage râpé', q:'20 g', k:80}
+        ]},
+        {m:'Collation', ing:[
+          {n:'1 fruit (poire)', q:'~150 g', k:85},
+          {n:'Chocolat noir 72 %', q:'2 carrés (20 g)', k:110}
+        ]}
+      ]},
+      {d:'Vendredi', meals:[
+        {m:'Midi', ing:[
+          {n:'Œufs', q:'2 œufs (110 g)', k:155},
+          {n:'Pain de mie complet', q:'3 tranches (105 g)', k:265},
+          {n:'Avocat', q:'80 g', k:130},
+          {n:'Tomates cerises', q:'60 g', k:12}
+        ]},
+        {m:'Soir', ing:[
+          {n:'Filet de poulet grillé', q:'170 g', k:255},
+          {n:'Quinoa cuit', q:'200 g', k:240},
+          {n:'Brocolis vapeur', q:'150 g', k:50},
+          {n:'Filet d\u2019huile d\u2019olive', q:'10 ml', k:90}
+        ]},
+        {m:'Collation', ing:[
+          {n:'Fromage blanc 0 % aux fruits', q:'200 g', k:135}
+        ]}
+      ]},
+      {d:'Samedi', note:'jour plaisir maîtrisé', meals:[
+        {m:'Apéro', ing:[
+          {n:'Olives', q:'petite poignée (30 g)', k:60},
+          {n:'Chips', q:'petite poignée (25 g)', k:135}
+        ]},
+        {m:'Midi', ing:[
+          {n:'Burger maison (pain, steak haché 5 %, fromage)', q:'1 burger (220 g)', k:520},
+          {n:'Salade + tomates', q:'80 g', k:20}
+        ]},
+        {m:'Soir', ing:[
+          {n:'Pizza margherita (part maison)', q:'2 parts (200 g)', k:480},
+          {n:'Salade verte', q:'60 g', k:10}
+        ]},
+        {m:'Collation', ing:[
+          {n:'Glace', q:'1 boule (60 g)', k:110}
+        ]}
+      ]},
+      {d:'Dimanche', meals:[
+        {m:'Midi', ing:[
+          {n:'Rôti de bœuf', q:'160 g', k:320},
+          {n:'Gratin dauphinois', q:'260 g', k:365},
+          {n:'Haricots verts', q:'150 g', k:45}
+        ]},
+        {m:'Soir', ing:[
+          {n:'Soupe de légumes maison', q:'300 ml', k:120},
+          {n:'Pain de mie complet', q:'2 tranches (70 g)', k:175},
+          {n:'Fromage de chèvre', q:'55 g', k:160}
+        ]},
+        {m:'Collation', ing:[
+          {n:'Compote', q:'1 pot (130 g)', k:90},
+          {n:'Yaourt nature', q:'125 g', k:65}
+        ]}
+      ]}
+    ]
   }]
 };
 function escHTML(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -2540,7 +2673,10 @@ function renderProgDorothee(){
   html+='<p class="hint">Totaux recalculés à partir des grammages de chaque ingrédient (kcal à droite de chaque ligne). Les poids s\u2019entendent prêts à consommer (égouttés / cuits) sauf mention contraire — pèse à la balance pour rester dans les clous. 🎯</p>';
   box.innerHTML=html;
   const meta=document.querySelector('#prog-dorothee .pe-meta');
-  if(meta&&avgN) meta.textContent=`Semaine 1 · ~${Math.round(avgSum/avgN/10)*10} kcal / jour`;
+  if(meta&&avgN){
+    const wLabel = PROG_DOROTHEE.weeks.length>1 ? `Semaines 1-${PROG_DOROTHEE.weeks.length}` : 'Semaine 1';
+    meta.textContent=`${wLabel} · ~${Math.round(avgSum/avgN/10)*10} kcal / jour`;
+  }
 }
 renderProgDorothee();
 document.getElementById('prog-dorothee').addEventListener('click',()=>{

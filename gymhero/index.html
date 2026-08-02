@@ -14,7 +14,7 @@
 :root{
   --bg:#0E131E; --card:#171E2C; --card2:#212B40; --line:#2A3450;
   --text:#EEF1F7; --muted:#8C96AA;
-  --gold:#F5B63F; --teal:#3BD6A0; --coral:#FF6B4A;
+  --gold:#F5B63F; --teal:#3BD6A0; --coral:#FF6B4A; --blue:#4FA3F7; --purple:#C77DFF;
   --radius:16px;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -248,6 +248,8 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
 .nbar .track{height:10px; border-radius:999px; background:var(--card2); overflow:hidden;}
 .nbar .fill{height:100%; border-radius:999px; background:var(--teal); transition:width .3s ease;}
 .nbar.kcal .fill{background:var(--gold);}
+.nbar.glu .fill{background:var(--blue);}
+.nbar.lip .fill{background:var(--purple);}
 .nbar.over .fill{background:var(--coral);}
 .mealseg{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:12px;}
 .mealseg button[data-m="c"]{grid-column:1 / -1;}
@@ -714,6 +716,14 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
         <div class="nb-top"><span>Protéines</span><b id="t-prot"></b></div>
         <div class="track"><div class="fill" id="f-prot"></div></div>
       </div>
+      <div class="nbar glu" id="bar-glu">
+        <div class="nb-top"><span>Glucides</span><b id="t-glu"></b></div>
+        <div class="track"><div class="fill" id="f-glu"></div></div>
+      </div>
+      <div class="nbar lip" id="bar-lip">
+        <div class="nb-top"><span>Lipides</span><b id="t-lip"></b></div>
+        <div class="track"><div class="fill" id="f-lip"></div></div>
+      </div>
       <div class="goalline">
         <span>Objectif</span>
         <span>
@@ -728,6 +738,8 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
       <div class="row" id="persorow" style="display:none; margin-top:12px;">
         <div class="field grow"><label>kcal / jour</label><input id="in-pkcal" type="number" inputmode="numeric"></div>
         <div class="field grow"><label>Protéines (g)</label><input id="in-pprot" type="number" inputmode="numeric"></div>
+        <div class="field grow"><label>Glucides (g)</label><input id="in-pglu" type="number" inputmode="numeric"></div>
+        <div class="field grow"><label>Lipides (g)</label><input id="in-plip" type="number" inputmode="numeric"></div>
       </div>
       <p class="hint" id="nutrihint"></p>
     </div>
@@ -739,6 +751,8 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
         <input class="fname" id="in-fname" placeholder="Aliment…">
         <input class="fnum" id="in-fkcal" type="number" inputmode="numeric" placeholder="kcal">
         <input class="fnum" id="in-fprot" type="number" inputmode="decimal" placeholder="prot. g">
+        <input class="fnum" id="in-fglu" type="number" inputmode="decimal" placeholder="gluc. g">
+        <input class="fnum" id="in-flip" type="number" inputmode="decimal" placeholder="lip. g">
       </div>
       <div class="sugbox" id="sugbox"></div>
       <div class="qtyrow" id="qtyrow">
@@ -748,7 +762,7 @@ textarea.notein{width:100%; background:var(--card2); border:1px solid var(--line
       </div>
       <button class="btn" id="addfood">Ajouter au journal 🍽️</button>
       <div class="favwrap" id="favwrap"></div>
-      <p class="hint">Tape un nom (« oeuf », « riz »…) ou scanne le code-barres d'un produit : kcal et protéines se remplissent automatiquement (base Open Food Facts, mémorisée hors ligne après le premier scan), ajuste la quantité avec − / + ou tape directement les grammes exacts dans le champ. Tes aliments sont mémorisés : la prochaine fois, un seul tap sur la pastille suffit. ✕ pour retirer un favori.</p>
+      <p class="hint">Tape un nom (« oeuf », « riz »…) ou scanne le code-barres d'un produit : kcal, protéines, glucides et lipides se remplissent automatiquement (base Open Food Facts, mémorisée hors ligne après le premier scan), ajuste la quantité avec − / + ou tape directement les grammes exacts dans le champ. Tes aliments sont mémorisés : la prochaine fois, un seul tap sur la pastille suffit. ✕ pour retirer un favori.</p>
     </div>
     <div class="card">
       <h2 id="journaltitle">Journal du jour</h2>
@@ -818,7 +832,7 @@ function load(){
     const d=JSON.parse(localStorage.getItem(KEY));
     if(d){
       d.exercises=d.exercises||[]; d.logs=d.logs||[];
-      d.meals=d.meals||[]; d.foods=d.foods||[]; d.nutri=d.nutri||{mode:'maintien',kcal:null,prot:null};
+      d.meals=d.meals||[]; d.foods=d.foods||[]; d.nutri=d.nutri||{mode:'maintien',kcal:null,prot:null,glu:null,lip:null};
       d.routines=d.routines||[]; d.flags=d.flags||{}; d.scanCache=d.scanCache||{};
       if(d.profile&&!d.profile.sex) d.profile.sex='m';
       if(d.profile) d.profile.look=d.profile.look||null; // apparence : valeurs par défaut si absente
@@ -826,7 +840,7 @@ function load(){
     }
   }catch(e){}
   return { sessions:[], measures:[], goal:3, profile:null, exercises:[], logs:[],
-    meals:[], foods:[], nutri:{mode:'maintien',kcal:null,prot:null}, routines:[], flags:{}, scanCache:{} };
+    meals:[], foods:[], nutri:{mode:'maintien',kcal:null,prot:null,glu:null,lip:null}, routines:[], flags:{}, scanCache:{} };
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(D)); }
 
@@ -2051,131 +2065,131 @@ let selMeal=(h=>h<11?'b':h<15?'l':h<18?'s':'d')(new Date().getHours());
 /* --- Base d'aliments locale (valeurs par portion, offline) --- */
 const FOODDB=[
 // Œufs & petit-déj
-{n:'Œuf',u:'1 œuf (55 g)',k:78,p:6.5},
-{n:'Blanc d\u2019œuf',u:'1 blanc (33 g)',k:17,p:3.6},
-{n:'Flocons d\u2019avoine',u:'50 g',k:185,p:6.5},
-{n:'Muesli',u:'50 g',k:190,p:5},
-{n:'Pain complet',u:'1 tranche (35 g)',k:85,p:3.5},
-{n:'Baguette',u:'1/4 baguette (60 g)',k:160,p:5},
-{n:'Biscotte',u:'1 biscotte',k:35,p:1},
-{n:'Croissant',u:'1 croissant',k:230,p:4.5},
-{n:'Pain au chocolat',u:'1 pièce',k:280,p:5},
-{n:'Beurre',u:'10 g',k:75,p:0},
-{n:'Confiture',u:'1 c. à soupe (20 g)',k:52,p:0},
-{n:'Miel',u:'1 c. à soupe (20 g)',k:61,p:0},
-{n:'Pâte à tartiner',u:'1 c. à soupe (20 g)',k:108,p:1.2},
+{n:'Œuf',u:'1 œuf (55 g)',k:78,p:6.5,g:0.5,l:5.5},
+{n:'Blanc d\u2019œuf',u:'1 blanc (33 g)',k:17,p:3.6,g:0.2,l:0},
+{n:'Flocons d\u2019avoine',u:'50 g',k:185,p:6.5,g:31,l:3.5},
+{n:'Muesli',u:'50 g',k:190,p:5,g:33,l:3},
+{n:'Pain complet',u:'1 tranche (35 g)',k:85,p:3.5,g:15,l:1},
+{n:'Baguette',u:'1/4 baguette (60 g)',k:160,p:5,g:32,l:1},
+{n:'Biscotte',u:'1 biscotte',k:35,p:1,g:6.5,l:0.7},
+{n:'Croissant',u:'1 croissant',k:230,p:4.5,g:26,l:12},
+{n:'Pain au chocolat',u:'1 pièce',k:280,p:5,g:30,l:15},
+{n:'Beurre',u:'10 g',k:75,p:0,g:0,l:8.3},
+{n:'Confiture',u:'1 c. à soupe (20 g)',k:52,p:0,g:13,l:0},
+{n:'Miel',u:'1 c. à soupe (20 g)',k:61,p:0,g:16.5,l:0},
+{n:'Pâte à tartiner',u:'1 c. à soupe (20 g)',k:108,p:1.2,g:11,l:6},
 // Produits laitiers
-{n:'Lait demi-écrémé',u:'1 verre (250 ml)',k:115,p:8},
-{n:'Lait écrémé',u:'1 verre (250 ml)',k:83,p:8.3},
-{n:'Yaourt nature',u:'1 pot (125 g)',k:60,p:5},
-{n:'Yaourt grec',u:'1 pot (150 g)',k:145,p:9},
-{n:'Skyr',u:'1 pot (140 g)',k:90,p:15},
-{n:'Fromage blanc 0%',u:'100 g',k:45,p:8},
-{n:'Fromage blanc 3%',u:'100 g',k:72,p:7.5},
-{n:'Petit-suisse',u:'1 pot (60 g)',k:55,p:5.5},
-{n:'Emmental',u:'30 g',k:113,p:8.5},
-{n:'Camembert',u:'30 g',k:85,p:6},
-{n:'Mozzarella',u:'1/2 boule (62 g)',k:155,p:11},
-{n:'Feta',u:'30 g',k:80,p:4.3},
-{n:'Parmesan',u:'20 g',k:78,p:7},
+{n:'Lait demi-écrémé',u:'1 verre (250 ml)',k:115,p:8,g:12,l:4.5},
+{n:'Lait écrémé',u:'1 verre (250 ml)',k:83,p:8.3,g:12.5,l:0.3},
+{n:'Yaourt nature',u:'1 pot (125 g)',k:60,p:5,g:6,l:1.5},
+{n:'Yaourt grec',u:'1 pot (150 g)',k:145,p:9,g:6,l:9},
+{n:'Skyr',u:'1 pot (140 g)',k:90,p:15,g:5,l:0.3},
+{n:'Fromage blanc 0%',u:'100 g',k:45,p:8,g:4,l:0.2},
+{n:'Fromage blanc 3%',u:'100 g',k:72,p:7.5,g:4,l:3},
+{n:'Petit-suisse',u:'1 pot (60 g)',k:55,p:5.5,g:3,l:2},
+{n:'Emmental',u:'30 g',k:113,p:8.5,g:0.1,l:9},
+{n:'Camembert',u:'30 g',k:85,p:6,g:0.1,l:6.7},
+{n:'Mozzarella',u:'1/2 boule (62 g)',k:155,p:11,g:1,l:11},
+{n:'Feta',u:'30 g',k:80,p:4.3,g:0.6,l:6.4},
+{n:'Parmesan',u:'20 g',k:78,p:7,g:0.1,l:5.2},
 // Viandes
-{n:'Blanc de poulet',u:'100 g cuit',k:165,p:31},
-{n:'Cuisse de poulet',u:'100 g (sans peau)',k:180,p:26},
-{n:'Escalope de dinde',u:'100 g',k:150,p:30},
-{n:'Steak haché 5%',u:'100 g',k:130,p:21},
-{n:'Steak haché 15%',u:'100 g',k:215,p:18.5},
-{n:'Bœuf (rumsteck)',u:'100 g',k:155,p:28},
-{n:'Filet mignon de porc',u:'100 g',k:145,p:26},
-{n:'Côte de porc',u:'100 g',k:230,p:25},
-{n:'Jambon blanc',u:'1 tranche (45 g)',k:52,p:8.5},
-{n:'Jambon cru',u:'1 tranche (15 g)',k:35,p:4},
-{n:'Blanc de dinde (tranche)',u:'1 tranche (40 g)',k:42,p:8.5},
-{n:'Bacon',u:'2 tranches (30 g)',k:100,p:9},
-{n:'Saucisse',u:'1 saucisse (50 g)',k:160,p:7},
-{n:'Lardons',u:'50 g',k:150,p:8},
-{n:'Agneau',u:'100 g',k:230,p:25},
+{n:'Blanc de poulet',u:'100 g cuit',k:165,p:31,g:0,l:3.6},
+{n:'Cuisse de poulet',u:'100 g (sans peau)',k:180,p:26,g:0,l:8},
+{n:'Escalope de dinde',u:'100 g',k:150,p:30,g:0,l:2},
+{n:'Steak haché 5%',u:'100 g',k:130,p:21,g:0,l:5},
+{n:'Steak haché 15%',u:'100 g',k:215,p:18.5,g:0,l:15},
+{n:'Bœuf (rumsteck)',u:'100 g',k:155,p:28,g:0,l:4},
+{n:'Filet mignon de porc',u:'100 g',k:145,p:26,g:0,l:4},
+{n:'Côte de porc',u:'100 g',k:230,p:25,g:0,l:14},
+{n:'Jambon blanc',u:'1 tranche (45 g)',k:52,p:8.5,g:0.3,l:1.5},
+{n:'Jambon cru',u:'1 tranche (15 g)',k:35,p:4,g:0,l:2.2},
+{n:'Blanc de dinde (tranche)',u:'1 tranche (40 g)',k:42,p:8.5,g:0.2,l:0.6},
+{n:'Bacon',u:'2 tranches (30 g)',k:100,p:9,g:0.2,l:7},
+{n:'Saucisse',u:'1 saucisse (50 g)',k:160,p:7,g:1,l:14},
+{n:'Lardons',u:'50 g',k:150,p:8,g:0,l:13},
+{n:'Agneau',u:'100 g',k:230,p:25,g:0,l:14},
 // Poissons
-{n:'Saumon',u:'100 g',k:200,p:22},
-{n:'Thon en boîte (naturel)',u:'100 g',k:110,p:25},
-{n:'Cabillaud',u:'100 g',k:82,p:18},
-{n:'Crevettes',u:'100 g',k:100,p:21},
-{n:'Sardines (boîte)',u:'100 g',k:210,p:24},
-{n:'Maquereau',u:'100 g',k:220,p:20},
-{n:'Truite',u:'100 g',k:140,p:20},
-{n:'Surimi',u:'1 bâtonnet (17 g)',k:16,p:1.3},
+{n:'Saumon',u:'100 g',k:200,p:22,g:0,l:12},
+{n:'Thon en boîte (naturel)',u:'100 g',k:110,p:25,g:0,l:1},
+{n:'Cabillaud',u:'100 g',k:82,p:18,g:0,l:0.7},
+{n:'Crevettes',u:'100 g',k:100,p:21,g:0.5,l:1.5},
+{n:'Sardines (boîte)',u:'100 g',k:210,p:24,g:0,l:12},
+{n:'Maquereau',u:'100 g',k:220,p:20,g:0,l:15},
+{n:'Truite',u:'100 g',k:140,p:20,g:0,l:6},
+{n:'Surimi',u:'1 bâtonnet (17 g)',k:16,p:1.3,g:1.5,l:0.1},
 // Féculents
-{n:'Riz blanc cuit',u:'100 g',k:130,p:2.7},
-{n:'Riz complet cuit',u:'100 g',k:120,p:2.6},
-{n:'Pâtes cuites',u:'100 g',k:155,p:5.5},
-{n:'Pâtes complètes cuites',u:'100 g',k:135,p:5.5},
-{n:'Quinoa cuit',u:'100 g',k:120,p:4.4},
-{n:'Semoule cuite',u:'100 g',k:112,p:3.8},
-{n:'Boulgour cuit',u:'100 g',k:110,p:3.5},
-{n:'Pomme de terre vapeur',u:'100 g',k:80,p:2},
-{n:'Purée',u:'100 g',k:105,p:2},
-{n:'Frites',u:'100 g',k:290,p:3.5},
-{n:'Patate douce cuite',u:'100 g',k:90,p:1.6},
-{n:'Lentilles cuites',u:'100 g',k:115,p:9},
-{n:'Pois chiches cuits',u:'100 g',k:145,p:8},
-{n:'Haricots rouges cuits',u:'100 g',k:125,p:8.5},
-{n:'Maïs',u:'100 g',k:100,p:3},
+{n:'Riz blanc cuit',u:'100 g',k:130,p:2.7,g:28,l:0.3},
+{n:'Riz complet cuit',u:'100 g',k:120,p:2.6,g:25,l:1},
+{n:'Pâtes cuites',u:'100 g',k:155,p:5.5,g:30,l:1},
+{n:'Pâtes complètes cuites',u:'100 g',k:135,p:5.5,g:27,l:1},
+{n:'Quinoa cuit',u:'100 g',k:120,p:4.4,g:21,l:2},
+{n:'Semoule cuite',u:'100 g',k:112,p:3.8,g:23,l:0.2},
+{n:'Boulgour cuit',u:'100 g',k:110,p:3.5,g:23,l:0.3},
+{n:'Pomme de terre vapeur',u:'100 g',k:80,p:2,g:17,l:0.1},
+{n:'Purée',u:'100 g',k:105,p:2,g:15,l:4},
+{n:'Frites',u:'100 g',k:290,p:3.5,g:37,l:14},
+{n:'Patate douce cuite',u:'100 g',k:90,p:1.6,g:20,l:0.1},
+{n:'Lentilles cuites',u:'100 g',k:115,p:9,g:17,l:0.5},
+{n:'Pois chiches cuits',u:'100 g',k:145,p:8,g:20,l:2.5},
+{n:'Haricots rouges cuits',u:'100 g',k:125,p:8.5,g:18,l:0.5},
+{n:'Maïs',u:'100 g',k:100,p:3,g:19,l:1.5},
 // Légumes
-{n:'Brocoli cuit',u:'100 g',k:30,p:2.8},
-{n:'Haricots verts',u:'100 g',k:30,p:1.9},
-{n:'Courgette',u:'100 g',k:17,p:1.2},
-{n:'Tomate',u:'1 moyenne (120 g)',k:22,p:1},
-{n:'Carotte',u:'100 g',k:38,p:0.8},
-{n:'Salade verte',u:'100 g',k:15,p:1.2},
-{n:'Épinards cuits',u:'100 g',k:25,p:2.9},
-{n:'Champignons',u:'100 g',k:25,p:3},
-{n:'Poivron',u:'100 g',k:27,p:1},
-{n:'Concombre',u:'100 g',k:13,p:0.6},
-{n:'Oignon',u:'100 g',k:40,p:1.2},
-{n:'Chou-fleur',u:'100 g',k:27,p:2},
-{n:'Avocat',u:'1/2 avocat (70 g)',k:115,p:1.4},
+{n:'Brocoli cuit',u:'100 g',k:30,p:2.8,g:3,l:0.4},
+{n:'Haricots verts',u:'100 g',k:30,p:1.9,g:4.5,l:0.2},
+{n:'Courgette',u:'100 g',k:17,p:1.2,g:2.5,l:0.2},
+{n:'Tomate',u:'1 moyenne (120 g)',k:22,p:1,g:4,l:0.2},
+{n:'Carotte',u:'100 g',k:38,p:0.8,g:7.5,l:0.2},
+{n:'Salade verte',u:'100 g',k:15,p:1.2,g:1.5,l:0.2},
+{n:'Épinards cuits',u:'100 g',k:25,p:2.9,g:1.5,l:0.4},
+{n:'Champignons',u:'100 g',k:25,p:3,g:2,l:0.4},
+{n:'Poivron',u:'100 g',k:27,p:1,g:5,l:0.3},
+{n:'Concombre',u:'100 g',k:13,p:0.6,g:2.5,l:0.1},
+{n:'Oignon',u:'100 g',k:40,p:1.2,g:8.5,l:0.1},
+{n:'Chou-fleur',u:'100 g',k:27,p:2,g:3.5,l:0.3},
+{n:'Avocat',u:'1/2 avocat (70 g)',k:115,p:1.4,g:3,l:11},
 // Fruits
-{n:'Banane',u:'1 banane (120 g)',k:105,p:1.3},
-{n:'Pomme',u:'1 pomme (150 g)',k:78,p:0.4},
-{n:'Orange',u:'1 orange (130 g)',k:60,p:1.2},
-{n:'Poire',u:'1 poire (140 g)',k:80,p:0.5},
-{n:'Pêche',u:'1 pêche (130 g)',k:50,p:1},
-{n:'Kiwi',u:'1 kiwi (75 g)',k:45,p:0.8},
-{n:'Clémentine',u:'1 clémentine (70 g)',k:33,p:0.6},
-{n:'Fraises',u:'100 g',k:33,p:0.7},
-{n:'Fruits rouges',u:'100 g',k:45,p:1},
-{n:'Raisin',u:'100 g',k:70,p:0.6},
-{n:'Ananas',u:'100 g',k:53,p:0.5},
-{n:'Mangue',u:'100 g',k:63,p:0.5},
-{n:'Compote sans sucre',u:'1 pot (100 g)',k:65,p:0.3},
+{n:'Banane',u:'1 banane (120 g)',k:105,p:1.3,g:24,l:0.3},
+{n:'Pomme',u:'1 pomme (150 g)',k:78,p:0.4,g:18,l:0.3},
+{n:'Orange',u:'1 orange (130 g)',k:60,p:1.2,g:13,l:0.2},
+{n:'Poire',u:'1 poire (140 g)',k:80,p:0.5,g:19,l:0.2},
+{n:'Pêche',u:'1 pêche (130 g)',k:50,p:1,g:11,l:0.1},
+{n:'Kiwi',u:'1 kiwi (75 g)',k:45,p:0.8,g:9,l:0.4},
+{n:'Clémentine',u:'1 clémentine (70 g)',k:33,p:0.6,g:7.5,l:0.1},
+{n:'Fraises',u:'100 g',k:33,p:0.7,g:7,l:0.3},
+{n:'Fruits rouges',u:'100 g',k:45,p:1,g:9,l:0.4},
+{n:'Raisin',u:'100 g',k:70,p:0.6,g:17,l:0.2},
+{n:'Ananas',u:'100 g',k:53,p:0.5,g:13,l:0.1},
+{n:'Mangue',u:'100 g',k:63,p:0.5,g:15,l:0.3},
+{n:'Compote sans sucre',u:'1 pot (100 g)',k:65,p:0.3,g:15,l:0.1},
 // Oléagineux & gras
-{n:'Amandes',u:'30 g (une poignée)',k:175,p:6.3},
-{n:'Noix',u:'30 g',k:200,p:4.5},
-{n:'Noix de cajou',u:'30 g',k:170,p:5.5},
-{n:'Cacahuètes',u:'30 g',k:170,p:7.8},
-{n:'Beurre de cacahuète',u:'1 c. à soupe (15 g)',k:90,p:3.8},
-{n:'Huile d\u2019olive',u:'1 c. à soupe (10 g)',k:90,p:0},
-{n:'Chocolat noir',u:'2 carrés (20 g)',k:108,p:1.6},
-{n:'Chocolat au lait',u:'2 carrés (20 g)',k:107,p:1.5},
+{n:'Amandes',u:'30 g (une poignée)',k:175,p:6.3,g:2,l:15},
+{n:'Noix',u:'30 g',k:200,p:4.5,g:1.5,l:20},
+{n:'Noix de cajou',u:'30 g',k:170,p:5.5,g:9,l:13},
+{n:'Cacahuètes',u:'30 g',k:170,p:7.8,g:4,l:14},
+{n:'Beurre de cacahuète',u:'1 c. à soupe (15 g)',k:90,p:3.8,g:3,l:7.5},
+{n:'Huile d\u2019olive',u:'1 c. à soupe (10 g)',k:90,p:0,g:0,l:10},
+{n:'Chocolat noir',u:'2 carrés (20 g)',k:108,p:1.6,g:9,l:7},
+{n:'Chocolat au lait',u:'2 carrés (20 g)',k:107,p:1.5,g:11,l:6},
 // Sport & protéines
-{n:'Whey',u:'1 dose (30 g)',k:115,p:24},
-{n:'Barre protéinée',u:'1 barre (50 g)',k:190,p:20},
-{n:'Tofu',u:'100 g',k:120,p:12},
-{n:'Boisson soja',u:'1 verre (250 ml)',k:95,p:8.3},
+{n:'Whey',u:'1 dose (30 g)',k:115,p:24,g:2,l:1.5},
+{n:'Barre protéinée',u:'1 barre (50 g)',k:190,p:20,g:15,l:5},
+{n:'Tofu',u:'100 g',k:120,p:12,g:2,l:7},
+{n:'Boisson soja',u:'1 verre (250 ml)',k:95,p:8.3,g:3,l:4},
 // Plats & snacks
-{n:'Pizza margherita',u:'1/2 pizza (200 g)',k:480,p:20},
-{n:'Cheeseburger',u:'1 burger',k:300,p:16},
-{n:'Kebab',u:'1 sandwich',k:750,p:35},
-{n:'Sandwich jambon-beurre',u:'1 sandwich',k:450,p:18},
-{n:'Croque-monsieur',u:'1 pièce',k:350,p:17},
-{n:'Quiche lorraine',u:'1 part (150 g)',k:380,p:13},
-{n:'Sushis',u:'6 pièces',k:220,p:9},
-{n:'Riz cantonais',u:'100 g',k:160,p:5},
-{n:'Soupe de légumes',u:'1 bol (300 ml)',k:90,p:3},
+{n:'Pizza margherita',u:'1/2 pizza (200 g)',k:480,p:20,g:55,l:18},
+{n:'Cheeseburger',u:'1 burger',k:300,p:16,g:28,l:14},
+{n:'Kebab',u:'1 sandwich',k:750,p:35,g:65,l:38},
+{n:'Sandwich jambon-beurre',u:'1 sandwich',k:450,p:18,g:48,l:20},
+{n:'Croque-monsieur',u:'1 pièce',k:350,p:17,g:25,l:19},
+{n:'Quiche lorraine',u:'1 part (150 g)',k:380,p:13,g:22,l:27},
+{n:'Sushis',u:'6 pièces',k:220,p:9,g:35,l:4},
+{n:'Riz cantonais',u:'100 g',k:160,p:5,g:22,l:5},
+{n:'Soupe de légumes',u:'1 bol (300 ml)',k:90,p:3,g:13,l:3},
 // Boissons
-{n:'Jus d\u2019orange',u:'1 verre (250 ml)',k:112,p:1.8},
-{n:'Soda cola',u:'1 canette (330 ml)',k:140,p:0},
-{n:'Bière',u:'1 demi (250 ml)',k:105,p:1.2},
-{n:'Vin rouge',u:'1 verre (125 ml)',k:105,p:0},
+{n:'Jus d\u2019orange',u:'1 verre (250 ml)',k:112,p:1.8,g:26,l:0.3},
+{n:'Soda cola',u:'1 canette (330 ml)',k:140,p:0,g:35,l:0},
+{n:'Bière',u:'1 demi (250 ml)',k:105,p:1.2,g:8,l:0},
+{n:'Vin rouge',u:'1 verre (125 ml)',k:105,p:0,g:0.3,l:0},
 ];
 function normTxt(s){return s.toLowerCase().replace(/œ/g,'oe').replace(/æ/g,'ae').normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
 let selFood=null, selQty=1, selMode='x', selRef=100, selGUnit='g';
@@ -2186,7 +2200,7 @@ function parseUnitAmount(u){
 function clearFoodSel(){ selFood=null; selQty=1; selMode='x'; const q=document.getElementById('qtyrow'); if(q) q.classList.remove('show'); }
 function resetFoodEntry(){
   clearFoodSel(); hideSugs();
-  ['in-fname','in-fkcal','in-fprot'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['in-fname','in-fkcal','in-fprot','in-fglu','in-flip'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   const n=document.getElementById('in-fname'); if(n) n.focus();
 }
 function hideSugs(){ const b=document.getElementById('sugbox'); if(b){ b.classList.remove('show'); b.innerHTML=''; } }
@@ -2210,6 +2224,8 @@ function applyMacros(){
   const factor=selMode==='g'?selQty/selRef:selQty;
   document.getElementById('in-fkcal').value=Math.round(selFood.k*factor);
   document.getElementById('in-fprot').value=Math.round(selFood.p*factor*10)/10;
+  document.getElementById('in-fglu').value=Math.round((selFood.g||0)*factor*10)/10;
+  document.getElementById('in-flip').value=Math.round((selFood.l||0)*factor*10)/10;
 }
 function applyQty(){
   if(!selFood) return;
@@ -2235,13 +2251,21 @@ function renderSugs(){
   box.classList.add('show');
 }
 
+function macroDefaults(kcal,prot){
+  // 28 % des calories en lipides, le reste en glucides (repère courant, pas une prescription médicale)
+  const lip=Math.round(kcal*0.28/9);
+  const glu=Math.max(0,Math.round((kcal-prot*4-lip*9)/4));
+  return {glu, lip};
+}
 function nutriTargets(){
   const n=D.nutri||{mode:'maintien'};
   if(n.mode==='perso'){
-    return {kcal:n.kcal||2200, prot:n.prot||120, auto:false};
+    const kcal=n.kcal||2200, prot=n.prot||120;
+    const md=macroDefaults(kcal,prot);
+    return {kcal, prot, glu:n.glu||md.glu, lip:n.lip||md.lip, auto:false};
   }
   const p=D.profile;
-  if(!p) return {kcal:2200, prot:120, auto:true, noProfile:true};
+  if(!p){ const md=macroDefaults(2200,120); return {kcal:2200, prot:120, glu:md.glu, lip:md.lip, auto:true, noProfile:true}; }
   // Katch-McArdle : basé sur la masse maigre (pas besoin de l'âge)
   const lbm=p.w*(1-p.bf/100);
   const bmr=370+21.6*lbm;
@@ -2249,7 +2273,8 @@ function nutriTargets(){
   if(n.mode==='seche') kcal-=400;
   if(n.mode==='masse') kcal+=300;
   const prot=Math.round(p.w*(n.mode==='seche'?2.0:1.8));
-  return {kcal, prot, auto:true};
+  const md=macroDefaults(kcal,prot);
+  return {kcal, prot, glu:md.glu, lip:md.lip, auto:true};
 }
 function mealsOf(date){ return D.meals.filter(m=>m.date===date); }
 function dayTotals(date){
@@ -2257,6 +2282,8 @@ function dayTotals(date){
   return {
     kcal:Math.round(ms.reduce((a,m)=>a+(m.kcal||0),0)),
     prot:Math.round(ms.reduce((a,m)=>a+(m.prot||0),0)),
+    glu:Math.round(ms.reduce((a,m)=>a+(m.glu||0),0)),
+    lip:Math.round(ms.reduce((a,m)=>a+(m.lip||0),0)),
   };
 }
 function protDaysMet(){
@@ -2264,15 +2291,15 @@ function protDaysMet(){
   D.meals.forEach(m=>{ by[m.date]=(by[m.date]||0)+(m.prot||0); });
   return Object.values(by).filter(v=>v>=t.prot).length;
 }
-function upsertFav(name,kcal,prot){
+function upsertFav(name,kcal,prot,glu,lip){
   const key=name.toLowerCase();
   D.foods=D.foods.filter(f=>f.name.toLowerCase()!==key);
-  D.foods.unshift({name,kcal,prot});
+  D.foods.unshift({name,kcal,prot,glu:glu||0,lip:lip||0});
   if(D.foods.length>24) D.foods.length=24;
 }
-function addMeal(name,kcal,prot){
-  D.meals.push({ts:Date.now(), date:nutriDay, meal:selMeal, name, kcal, prot});
-  upsertFav(name,kcal,prot);
+function addMeal(name,kcal,prot,glu,lip){
+  D.meals.push({ts:Date.now(), date:nutriDay, meal:selMeal, name, kcal, prot, glu:glu||0, lip:lip||0});
+  upsertFav(name,kcal,prot,glu,lip);
   save(); renderNutri(); render();
 }
 function renderNutri(){
@@ -2285,17 +2312,24 @@ function renderNutri(){
   const t=nutriTargets(), tot=dayTotals(nutriDay);
   document.getElementById('t-kcal').textContent=`${tot.kcal} / ${t.kcal} kcal`;
   document.getElementById('t-prot').textContent=`${tot.prot} / ${t.prot} g`;
+  document.getElementById('t-glu').textContent=`${tot.glu} / ${t.glu} g`;
+  document.getElementById('t-lip').textContent=`${tot.lip} / ${t.lip} g`;
   document.getElementById('f-kcal').style.width=Math.min(100,tot.kcal/t.kcal*100)+'%';
   document.getElementById('f-prot').style.width=Math.min(100,tot.prot/t.prot*100)+'%';
+  document.getElementById('f-glu').style.width=Math.min(100,tot.glu/t.glu*100)+'%';
+  document.getElementById('f-lip').style.width=Math.min(100,tot.lip/t.lip*100)+'%';
   document.getElementById('bar-kcal').classList.toggle('over',tot.kcal>t.kcal*1.05);
   // objectif / mode
   document.getElementById('nutrimode').value=D.nutri.mode;
   const perso=D.nutri.mode==='perso';
   document.getElementById('persorow').style.display=perso?'flex':'none';
-  const pk=document.getElementById('in-pkcal'), pp=document.getElementById('in-pprot');
+  const pk=document.getElementById('in-pkcal'), pp=document.getElementById('in-pprot'),
+        pg=document.getElementById('in-pglu'), pl=document.getElementById('in-plip');
   if(perso){
     if(document.activeElement!==pk) pk.value=D.nutri.kcal||t.kcal;
     if(document.activeElement!==pp) pp.value=D.nutri.prot||t.prot;
+    if(document.activeElement!==pg) pg.value=D.nutri.glu||t.glu;
+    if(document.activeElement!==pl) pl.value=D.nutri.lip||t.lip;
   }
   document.getElementById('nutrihint').textContent =
     perso ? 'Objectif défini par toi — modifie les valeurs ci-dessus quand tu veux.'
@@ -2320,7 +2354,7 @@ function renderNutri(){
       const ch=M.id===CHEAT_ID?' cheat':'';
       return `<div class="mealgroup${ch}"><h3>${M.e} ${M.n}<span class="mk">${sub} kcal</span></h3>
         <ul class="foodlist">${items.map(x=>
-          `<li><div><div>${x.name}</div><div class="fd">${x.kcal}\u00A0kcal${x.prot?` · ${x.prot}\u00A0g prot.`:''}</div></div>
+          `<li><div><div>${x.name}</div><div class="fd">${x.kcal}\u00A0kcal${x.prot?` · ${x.prot}\u00A0g prot.`:''}${x.glu?` · ${x.glu}\u00A0g gluc.`:''}${x.lip?` · ${x.lip}\u00A0g lip.`:''}</div></div>
            <button class="del" data-ts="${x.ts}">✕</button></li>`).join('')}</ul></div>`;
     }).join('');
   }
@@ -2382,7 +2416,7 @@ document.getElementById('qval').addEventListener('input',()=>{
   selQty=v; applyMacros(); // pas de réécriture du champ pendant la frappe
 });
 document.getElementById('qreset').addEventListener('click',resetFoodEntry);
-['in-fkcal','in-fprot'].forEach(id=>document.getElementById(id).addEventListener('input',clearFoodSel));
+['in-fkcal','in-fprot','in-fglu','in-flip'].forEach(id=>document.getElementById(id).addEventListener('input',clearFoodSel));
 
 /* ============ PROGRAMMES NUTRITION ============ */
 /* Chaque repas est détaillé ingrédient par ingrédient (grammage + kcal).
@@ -2766,7 +2800,7 @@ function onScanDetect(raw){
 }
 
 function cacheScan(code, prod){
-  D.scanCache[code]={n:prod.n, k:prod.k, p:prod.p, ts:Date.now()};
+  D.scanCache[code]={n:prod.n, k:prod.k, p:prod.p, g:prod.g, l:prod.l, ts:Date.now()};
   const keys=Object.keys(D.scanCache);
   if(keys.length>300){ // limite : on retire les plus anciens
     keys.sort((a,b)=>D.scanCache[a].ts-D.scanCache[b].ts).slice(0,keys.length-300)
@@ -2795,10 +2829,12 @@ async function offLookup(code){
     if(!(k>0) && nu['energy_100g']>0) k=nu['energy_100g']/4.184; // kJ → kcal
     if(!(k>0)) return null;
     const prot=nu['proteins_100g']>0?Math.round(nu['proteins_100g']*10)/10:0;
+    const glu=nu['carbohydrates_100g']>0?Math.round(nu['carbohydrates_100g']*10)/10:0;
+    const lip=nu['fat_100g']>0?Math.round(nu['fat_100g']*10)/10:0;
     let name=(p.product_name_fr||p.product_name||'Produit scanné').trim();
     if(p.brands) name+=' ('+p.brands.split(',')[0].trim()+')';
     if(name.length>60) name=name.slice(0,57)+'…';
-    return {n:name, k:Math.round(k), p:prot};
+    return {n:name, k:Math.round(k), p:prot, g:glu, l:lip};
   }catch(e){ return null; }
 }
 
@@ -2826,7 +2862,7 @@ async function handleBarcode(code){
   closeScanner();
   // Préremplir la ligne aliment : valeurs pour 100 g, quantité ajustable
   document.getElementById('in-fname').value=prod.n;
-  setupQty({n:prod.n, k:prod.k, p:prod.p, u:'100 g'});
+  setupQty({n:prod.n, k:prod.k, p:prod.p, g:prod.g, l:prod.l, u:'100 g'});
   toast(fromCache?'Produit retrouvé hors ligne 📦':'Produit trouvé ✅ Ajuste la quantité');
 }
 
@@ -3032,16 +3068,20 @@ document.getElementById('addfood').addEventListener('click',()=>{
   let name=document.getElementById('in-fname').value.trim();
   const kcal=parseFloat(document.getElementById('in-fkcal').value);
   const prot=parseFloat(document.getElementById('in-fprot').value)||0;
+  const glu=parseFloat(document.getElementById('in-fglu').value)||0;
+  const lip=parseFloat(document.getElementById('in-flip').value)||0;
   if(!name || !(kcal>0)){ toast('Nom + kcal, au minimum 🙂'); return; }
   if(selFood){
     if(selMode==='g'){ if(selQty!==selRef) name+=' – '+fmtQty(selQty)+'\u00A0'+selGUnit; }
     else if(selQty!==1) name+=' ×'+fmtQty(selQty);
   }
-  addMeal(name, Math.round(kcal), prot);
+  addMeal(name, Math.round(kcal), prot, glu, lip);
   clearFoodSel(); hideSugs();
   document.getElementById('in-fname').value='';
   document.getElementById('in-fkcal').value='';
   document.getElementById('in-fprot').value='';
+  document.getElementById('in-fglu').value='';
+  document.getElementById('in-flip').value='';
   const t=nutriTargets(), tot=dayTotals(nutriDay);
   if(selMeal===CHEAT_ID){
     toast(isSessionDay(nutriDay)
@@ -3056,7 +3096,7 @@ document.getElementById('favwrap').addEventListener('click',e=>{
   if(fx){ D.foods.splice(parseInt(fx.dataset.fx,10),1); save(); renderNutri(); return; }
   const chip=e.target.closest('.favchip'); if(!chip) return;
   const f=D.foods[parseInt(chip.dataset.fi,10)]; if(!f) return;
-  addMeal(f.name, f.kcal, f.prot||0);
+  addMeal(f.name, f.kcal, f.prot||0, f.glu||0, f.lip||0);
   toast(`${f.name} ajouté 🍽️`);
 });
 document.getElementById('daymeals').addEventListener('click',e=>{
@@ -3070,6 +3110,8 @@ document.getElementById('nutrimode').addEventListener('change',e=>{
     const t=nutriTargets(); // valeurs calculées comme point de départ
     D.nutri.kcal=D.nutri.kcal||t.kcal;
     D.nutri.prot=D.nutri.prot||t.prot;
+    D.nutri.glu=D.nutri.glu||t.glu;
+    D.nutri.lip=D.nutri.lip||t.lip;
   }
   D.nutri.mode=mode; save(); renderNutri();
 });
@@ -3080,6 +3122,14 @@ document.getElementById('in-pkcal').addEventListener('input',e=>{
 document.getElementById('in-pprot').addEventListener('input',e=>{
   const v=parseInt(e.target.value,10);
   if(v>0){ D.nutri.prot=v; save(); renderNutri(); }
+});
+document.getElementById('in-pglu').addEventListener('input',e=>{
+  const v=parseInt(e.target.value,10);
+  if(v>0){ D.nutri.glu=v; save(); renderNutri(); }
+});
+document.getElementById('in-plip').addEventListener('input',e=>{
+  const v=parseInt(e.target.value,10);
+  if(v>0){ D.nutri.lip=v; save(); renderNutri(); }
 });
 
 /* ============ BULLE DE PAROLE ============ */
